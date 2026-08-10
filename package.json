@@ -1,0 +1,24 @@
+{
+  "name": "github-oc-tracker",
+  "version": "1.0.0",
+  "description": "Self-hosted GitHub commit tracker: track commits, commit times, and activity across organizations and individual repositories.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run css && bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "css": "bunx @tailwindcss/cli -i src/styles/input.css -o public/app.css --minify",
+    "css:watch": "bunx @tailwindcss/cli -i src/styles/input.css -o public/app.css --watch",
+    "typecheck": "bunx tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.0.0",
+    "@types/bun": "^1.1.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.5.0"
+  }
+}

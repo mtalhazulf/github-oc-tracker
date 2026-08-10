@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/*
+ * Semantic tokens (light + dark). Chart colors follow the validated
+ * reference palette: single-hue blue for series & sequential ramps,
+ * text always in ink tokens, hairline grid/axes.
+ */
+:root {
+  color-scheme: light dark;
+
+  --surface-1: #fcfcfb;
+  --plane: #f9f9f7;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --hairline: rgba(11, 11, 11, 0.1);
+  --series-1: #2a78d6;
+  --up: #006300;
+  --critical: #d03b3b;
+
+  /* sequential blue ramp (heatmap): near-zero recedes toward the surface */
+  --seq-0: #f0efec;
+  --seq-1: #cde2fb;
+  --seq-2: #9ec5f4;
+  --seq-3: #6da7ec;
+  --seq-4: #3987e5;
+  --seq-5: #256abf;
+  --seq-6: #184f95;
+  --seq-7: #0d366b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-1: #1a1a19;
+    --plane: #0d0d0d;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --hairline: rgba(255, 255, 255, 0.1);
+    --series-1: #3987e5;
+    --up: #0ca30c;
+    --critical: #e66767;
+
+    --seq-0: #232322;
+    --seq-1: #0d366b;
+    --seq-2: #104281;
+    --seq-3: #1c5cab;
+    --seq-4: #256abf;
+    --seq-5: #3987e5;
+    --seq-6: #6da7ec;
+    --seq-7: #9ec5f4;
+  }
+}
+
+@theme {
+  --color-surface: var(--surface-1);
+  --color-plane: var(--plane);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-muted: var(--ink-muted);
+  --color-hairline: var(--hairline);
+  --color-accent: var(--series-1);
+  --color-up: var(--up);
+  --color-status-critical: var(--critical);
+}
+
+.htmx-spin {
+  animation: oc-spin 1.2s linear infinite;
+}
+
+@keyframes oc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

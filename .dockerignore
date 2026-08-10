@@ -1,0 +1,10 @@
+.git
+node_modules
+data
+.env
+public/app.css
+tests
+.github
+README.md
+docker-compose.yml
+Dockerfile
