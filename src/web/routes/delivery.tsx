@@ -5,6 +5,8 @@ import type { ClientRow, ProjectRow } from "../../db/store.ts";
 import { ValidationError } from "../../domain/errors.ts";
 import type { DeliveryService } from "../../services/delivery.ts";
 import type { SyncService } from "../../sync/service.ts";
+import type { AuthService } from "../../services/auth.ts";
+import { currentPrincipal } from "../request-context.ts";
 import { friendlyError, page, partial } from "../http.tsx";
 import { tzOffsetSeconds } from "../format.ts";
 import { Layout } from "../views/Layout.tsx";
@@ -68,7 +70,12 @@ function projectValues(p: ProjectRow): Record<string, string> {
   };
 }
 
-export function createDeliveryRoutes(store: Store, delivery: DeliveryService, sync: SyncService): Hono {
+export function createDeliveryRoutes(
+  store: Store,
+  delivery: DeliveryService,
+  sync: SyncService,
+  auth: AuthService,
+): Hono {
   const app = new Hono();
 
   const since = (days: number) => Math.floor(Date.now() / 1000) - days * 86_400;
@@ -192,6 +199,7 @@ export function createDeliveryRoutes(store: Store, delivery: DeliveryService, sy
   app.delete("/clients/:id", (c) => {
     try {
       delivery.removeClient(Number(c.req.param("id")));
+      auth.audit(currentPrincipal(), "client.delete", "client", Number(c.req.param("id")), null);
       c.header("HX-Redirect", "/clients");
       return c.text("ok");
     } catch (err) {
@@ -363,6 +371,7 @@ export function createDeliveryRoutes(store: Store, delivery: DeliveryService, sy
   app.delete("/projects/:id", (c) => {
     try {
       delivery.removeProject(Number(c.req.param("id")));
+      auth.audit(currentPrincipal(), "project.delete", "project", Number(c.req.param("id")), null);
       c.header("HX-Redirect", "/projects");
       return c.text("ok");
     } catch (err) {

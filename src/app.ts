@@ -9,6 +9,10 @@ import type { GitHubAppService } from "./github/app.ts";
 import type { SyncService } from "./sync/service.ts";
 import { createRoutes } from "./web/routes.tsx";
 import { createWebhookRoutes } from "./web/webhooks.ts";
+import { createAuthRoutes } from "./web/routes/auth.tsx";
+import { createAuthService } from "./services/auth.ts";
+import { csrfMiddleware, sessionMiddleware } from "./web/middleware/auth.ts";
+import { AppError } from "./domain/errors.ts";
 
 function errorPage(title: string, detail: string): string {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
@@ -71,27 +75,37 @@ export function buildApp(store: Store, sync: SyncService, appSvc: GitHubAppServi
     );
   });
 
-  // Webhooks authenticate with HMAC signatures, not basic auth — mount first.
+  // Webhooks authenticate with HMAC signatures, not sessions — mount first.
   app.route("/", createWebhookRoutes(store, sync, appSvc));
 
+  // Basic auth stays as an optional outer network gate, unchanged.
   if (config.basicAuthUser && config.basicAuthPass) {
     app.use(
       "*",
       basicAuth({ username: config.basicAuthUser, password: config.basicAuthPass, realm: "GitHub OC Tracker" }),
     );
-    log.info("basic auth enabled");
+    log.info("basic auth enabled (outer gate)");
   }
 
   app.use("/app.css", serveStatic({ path: "./public/app.css" }));
   app.use("/app.js", serveStatic({ path: "./public/app.js" }));
   app.use("/htmx.min.js", serveStatic({ path: "./public/htmx.min.js" }));
 
-  app.route("/", createRoutes(store, sync, appSvc));
+  const auth = createAuthService(store);
+  app.use("*", sessionMiddleware(auth));
+  app.use("*", csrfMiddleware());
+
+  app.route("/", createAuthRoutes(store, auth));
+  app.route("/", createRoutes(store, sync, appSvc, auth));
 
   app.notFound((c) =>
     c.html(errorPage("Page not found", "That page doesn't exist — it may have been moved or removed."), 404),
   );
   app.onError((err, c) => {
+    if (err instanceof AppError) {
+      if (c.req.header("HX-Request")) return c.text(err.message, err.status as 403);
+      return c.html(errorPage(err.status === 403 ? "Not allowed" : "That did not work", err.message), err.status as 403);
+    }
     log.error("unhandled error", { path: c.req.path, err: err.message, stack: err.stack });
     return c.html(
       errorPage("Something went wrong", "The error has been logged. Try again, or head back to the dashboard."),

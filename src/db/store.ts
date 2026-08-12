@@ -3,6 +3,8 @@ import { createSqlHelpers } from "./sql.ts";
 import { createEmployeeStore } from "./stores/employees.ts";
 import { createAttributionStore } from "./stores/attribution.ts";
 import { createDeliveryStore } from "./stores/delivery.ts";
+export type { UserRow, SessionRow, AuditRow } from "./stores/auth.ts";
+import { createAuthStore } from "./stores/auth.ts";
 
 export type {
   ClientRow,
@@ -209,6 +211,7 @@ export function createStore(db: Database) {
     ...createEmployeeStore(db),
     ...createAttributionStore(db),
     ...createDeliveryStore(db),
+    ...createAuthStore(db),
 
     // ---- organizations ----
 

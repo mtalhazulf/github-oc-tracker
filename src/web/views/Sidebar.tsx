@@ -69,7 +69,15 @@ const ACTIVE = "flex items-center gap-2.5 rounded-md bg-plane px-3 py-2 text-sm 
 const IDLE =
   "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-ink-2 hover:bg-plane hover:text-ink";
 
-export function Sidebar({ active, role }: { active?: NavKey; role: Role }) {
+export function Sidebar({
+  active,
+  role,
+  principal,
+}: {
+  active?: NavKey;
+  role: Role;
+  principal?: { name: string; role: Role } | null;
+}) {
   const groups = NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter((item) => can(role, item.capability)),
@@ -128,6 +136,31 @@ export function Sidebar({ active, role }: { active?: NavKey; role: Role }) {
             ))}
           </div>
         ))}
+
+        {principal ? (
+          <div class="mt-4 border-t border-hairline pt-3">
+            <div class="px-3 pb-2">
+              <p class="truncate text-sm text-ink">{principal.name}</p>
+              <p class="text-[11px] uppercase tracking-wide text-ink-muted">{principal.role}</p>
+            </div>
+            {can(role, "users.manage") ? (
+              <a href="/settings/users" class={IDLE}>
+                <Icon name="people" class="h-4 w-4 shrink-0 text-ink-muted" />
+                Accounts
+              </a>
+            ) : null}
+            {can(role, "settings.manage") ? (
+              <a href="/settings/audit" class={IDLE}>
+                <Icon name="mapping" class="h-4 w-4 shrink-0 text-ink-muted" />
+                Audit log
+              </a>
+            ) : null}
+            <a href="/logout" class={IDLE}>
+              <Icon name="close" class="h-4 w-4 shrink-0 text-ink-muted" />
+              Sign out
+            </a>
+          </div>
+        ) : null}
       </nav>
     </>
   );

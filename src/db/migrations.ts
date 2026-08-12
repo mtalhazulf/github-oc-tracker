@@ -313,4 +313,43 @@ export const migrations: Migration[] = [
         ORDER BY p2.is_primary DESC, p2.id ASC LIMIT 1);
     `,
   },
+  {
+    version: 5,
+    name: "accounts, sessions, audit",
+    sql: `
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        name TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner','admin','manager','member')),
+        employee_id INTEGER REFERENCES employees(id) ON DELETE SET NULL,
+        status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','disabled')),
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        last_login_at INTEGER
+      );
+
+      CREATE TABLE sessions (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        csrf_token TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        expires_at INTEGER NOT NULL
+      );
+      CREATE INDEX idx_sessions_user ON sessions(user_id);
+
+      CREATE TABLE audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        user_email TEXT,
+        action TEXT NOT NULL,
+        entity TEXT,
+        entity_id INTEGER,
+        summary TEXT,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      );
+      CREATE INDEX idx_audit_created ON audit_log(created_at DESC);
+      CREATE INDEX idx_audit_entity ON audit_log(entity, entity_id);
+    `,
+  },
 ];

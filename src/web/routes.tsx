@@ -14,6 +14,8 @@ import { createDeliveryRoutes } from "./routes/delivery.tsx";
 import { createEmployeeService } from "../services/employees.ts";
 import { createIdentityService } from "../services/identities.ts";
 import { createDeliveryService } from "../services/delivery.ts";
+import type { AuthService } from "../services/auth.ts";
+import { requireCapability } from "./middleware/auth.ts";
 import { Layout } from "./views/Layout.tsx";
 import { DashboardContent, DashboardPage, type DashboardData } from "./views/DashboardPage.tsx";
 import { CommitRows, CommitsPage, CommitsTable, type CommitsQuery } from "./views/CommitsPage.tsx";
@@ -29,7 +31,12 @@ function parseScope(scope: string): { filters: CommitFilters; orgId?: number; re
   return { filters: { repoId: id }, repoId: id };
 }
 
-export function createRoutes(store: Store, sync: SyncService, appSvc: GitHubAppService): Hono {
+export function createRoutes(
+  store: Store,
+  sync: SyncService,
+  appSvc: GitHubAppService,
+  auth: AuthService,
+): Hono {
   const app = new Hono();
 
   // One-time state tokens for the GitHub App manifest hand-off (15 min TTL).
@@ -324,8 +331,13 @@ export function createRoutes(store: Store, sync: SyncService, appSvc: GitHubAppS
 
   // ---- feature modules ----
 
-  app.route("/", createPeopleRoutes(store, createEmployeeService(store), createIdentityService(store)));
-  app.route("/", createDeliveryRoutes(store, createDeliveryService(store), sync));
+  app.use("/employees/*", requireCapability("people.view"));
+  app.use("/people/*", requireCapability("people.manage"));
+  app.use("/clients/*", requireCapability("delivery.view"));
+  app.use("/projects/*", requireCapability("delivery.view"));
+
+  app.route("/", createPeopleRoutes(store, createEmployeeService(store), createIdentityService(store), auth));
+  app.route("/", createDeliveryRoutes(store, createDeliveryService(store), sync, auth));
 
   return app;
 }

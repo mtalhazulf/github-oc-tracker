@@ -17,7 +17,8 @@ import {
   IdentityPanel,
   UnmappedAuthorsPage,
 } from "../views/EmployeesPage.tsx";
-import { currentRole } from "../context.ts";
+import { currentPrincipal } from "../request-context.ts";
+import type { AuthService } from "../../services/auth.ts";
 
 const YEAR_SECONDS = 365 * 86_400;
 
@@ -56,6 +57,7 @@ export function createPeopleRoutes(
   store: Store,
   employees: EmployeeService,
   identities: IdentityService,
+  auth: AuthService,
 ): Hono {
   const app = new Hono();
 
@@ -142,7 +144,7 @@ export function createPeopleRoutes(
           compensation={store.listCompensation(id)}
           contribution={store.employeeContribution(id, sinceYear())}
           commits={store.employeeCommits(id, 10)}
-          canSeeMoney={can(currentRole(c), "compensation.view")}
+          canSeeMoney={can(currentPrincipal()?.role ?? "owner", "compensation.view")}
         />
       </Layout>,
     );
@@ -187,6 +189,7 @@ export function createPeopleRoutes(
 
   app.post("/employees/:id/archive", (c) => {
     employees.archive(Number(c.req.param("id")), true);
+    auth.audit(currentPrincipal(), "employee.archive", "employee", Number(c.req.param("id")), null);
     c.header("HX-Redirect", `/employees/${c.req.param("id")}`);
     return c.text("ok");
   });
@@ -218,6 +221,7 @@ export function createPeopleRoutes(
     let error: string | undefined;
     try {
       identities.add(id, kind, String(body.value ?? ""));
+      auth.audit(currentPrincipal(), "identity.add", "employee", id, `${kind} ${String(body.value ?? "")}`);
     } catch (err) {
       error = friendlyError(err);
     }
@@ -252,6 +256,7 @@ export function createPeopleRoutes(
     let error: string | undefined;
     try {
       employees.addCompensation(id, body);
+      auth.audit(currentPrincipal(), "compensation.create", "employee", id, `salary record added for ${employee.full_name}`);
     } catch (err) {
       error = err instanceof ValidationError ? Object.values(err.fields)[0] ?? err.message : friendlyError(err);
     }

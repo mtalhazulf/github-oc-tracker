@@ -1,16 +1,17 @@
 import type { Child } from "hono/jsx";
-import { DEFAULT_ROLE, type Role } from "../../domain/rbac.ts";
+import { currentCsrfToken, currentPrincipal, currentRole } from "../request-context.ts";
 import { Sidebar, type NavKey } from "./Sidebar.tsx";
 
 interface Props {
   title: string;
   active?: NavKey;
-  /** Until accounts land (Phase 3) every request runs as owner. */
-  role?: Role;
   children: Child;
 }
 
-export function Layout({ title, active, role = DEFAULT_ROLE, children }: Props) {
+export function Layout({ title, active, children }: Props) {
+  const role = currentRole();
+  const principal = currentPrincipal();
+  const csrf = currentCsrfToken();
   return (
     <html lang="en">
       <head>
@@ -25,7 +26,11 @@ export function Layout({ title, active, role = DEFAULT_ROLE, children }: Props) 
         <script src="/htmx.min.js" defer></script>
         <script src="/app.js" defer></script>
       </head>
-      <body class="min-h-screen bg-plane text-ink" hx-boost="true">
+      <body
+        class="min-h-screen bg-plane text-ink"
+        hx-boost="true"
+        {...(csrf ? { "hx-headers": JSON.stringify({ "X-CSRF-Token": csrf }) } : {})}
+      >
         <a
           href="#main"
           class="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-surface focus:px-3 focus:py-2 focus:text-sm focus:text-ink"
@@ -35,7 +40,7 @@ export function Layout({ title, active, role = DEFAULT_ROLE, children }: Props) 
         <div id="loading-bar" aria-hidden="true"></div>
 
         <div class="md:grid md:min-h-screen md:grid-cols-[220px_minmax(0,1fr)]">
-          <Sidebar active={active} role={role} />
+          <Sidebar active={active} role={role} principal={principal} />
           <div class="min-w-0">
             <main id="main" class="mx-auto max-w-5xl px-4 py-6">
               {children}
