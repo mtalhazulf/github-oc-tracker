@@ -43,6 +43,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Delivery",
     items: [
+      { key: "projects", href: "/projects", label: "Projects", icon: "projects", capability: "delivery.view" },
+      { key: "clients", href: "/clients", label: "Clients", icon: "clients", capability: "delivery.view" },
       { key: "employees", href: "/employees", label: "People", icon: "people", capability: "people.view" },
     ],
   },

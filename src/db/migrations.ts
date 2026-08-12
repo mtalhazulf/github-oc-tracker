@@ -214,4 +214,103 @@ export const migrations: Migration[] = [
       LEFT JOIN employee_identities ie ON ie.kind = 'email' AND ie.value = c.author_email;
     `,
   },
+  {
+    version: 4,
+    name: "delivery: clients, projects, repo links",
+    sql: `
+      CREATE TABLE clients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL COLLATE NOCASE,
+        code TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('prospect','active','paused','churned')),
+        currency TEXT NOT NULL DEFAULT 'PKR' CHECK (length(currency) = 3 AND currency = upper(currency)),
+        country TEXT,
+        website TEXT,
+        contact_name TEXT,
+        contact_email TEXT,
+        billing_email TEXT,
+        billing_address TEXT,
+        tax_id TEXT,
+        payment_terms_days INTEGER NOT NULL DEFAULT 30 CHECK (payment_terms_days >= 0),
+        notes TEXT,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        archived_at INTEGER
+      );
+
+      CREATE TABLE projects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        name TEXT NOT NULL COLLATE NOCASE,
+        kind TEXT NOT NULL DEFAULT 'client'
+          CHECK (kind IN ('client','internal_product','internal_ops')),
+        client_id INTEGER REFERENCES clients(id) ON DELETE RESTRICT,
+        status TEXT NOT NULL DEFAULT 'active'
+          CHECK (status IN ('discovery','active','paused','completed','cancelled')),
+        billing_model TEXT NOT NULL DEFAULT 'time_materials'
+          CHECK (billing_model IN ('fixed_price','time_materials','retainer','none')),
+        currency TEXT NOT NULL DEFAULT 'PKR' CHECK (length(currency) = 3 AND currency = upper(currency)),
+        budget_minor INTEGER CHECK (budget_minor IS NULL OR budget_minor >= 0),
+        rate_hourly_minor INTEGER CHECK (rate_hourly_minor IS NULL OR rate_hourly_minor >= 0),
+        retainer_monthly_minor INTEGER CHECK (retainer_monthly_minor IS NULL OR retainer_monthly_minor >= 0),
+        start_on TEXT CHECK (start_on IS NULL OR start_on GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+        end_on TEXT CHECK (end_on IS NULL OR end_on GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+        manager_id INTEGER REFERENCES employees(id) ON DELETE SET NULL,
+        notes TEXT,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        archived_at INTEGER,
+        -- Client work names its client; internal work cannot have one.
+        CHECK ((kind = 'client') = (client_id IS NOT NULL)),
+        -- Internal work is never invoiced.
+        CHECK (kind = 'client' OR billing_model = 'none'),
+        CHECK (end_on IS NULL OR start_on IS NULL OR end_on >= start_on)
+      );
+      CREATE INDEX idx_projects_client ON projects(client_id);
+      CREATE INDEX idx_projects_status ON projects(status, archived_at);
+
+      -- A project spans N repositories, and a shared library legitimately serves
+      -- two engagements. Exactly one project may hold the PRIMARY link for a repo,
+      -- which is what makes cross-project rollups count each commit once.
+      CREATE TABLE project_repositories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        repo_id INTEGER NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+        is_primary INTEGER NOT NULL DEFAULT 0 CHECK (is_primary IN (0,1)),
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        UNIQUE (project_id, repo_id)
+      );
+      CREATE UNIQUE INDEX idx_project_repos_primary ON project_repositories(repo_id) WHERE is_primary = 1;
+      CREATE INDEX idx_project_repos_repo ON project_repositories(repo_id);
+
+      CREATE TABLE project_assignments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+        role TEXT,
+        allocation_pct INTEGER NOT NULL DEFAULT 100
+          CHECK (allocation_pct > 0 AND allocation_pct <= 100),
+        start_on TEXT NOT NULL CHECK (start_on GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+        end_on TEXT CHECK (end_on IS NULL OR end_on GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        CHECK (end_on IS NULL OR end_on >= start_on)
+      );
+      CREATE INDEX idx_assignments_project ON project_assignments(project_id);
+      CREATE INDEX idx_assignments_employee ON project_assignments(employee_id);
+
+      -- Denormalised so the clients list does not run a correlated MAX() per row.
+      ALTER TABLE repositories ADD COLUMN last_commit_ts INTEGER;
+      UPDATE repositories SET last_commit_ts =
+        (SELECT MAX(c.author_ts) FROM commits c WHERE c.repo_id = repositories.id);
+
+      -- Exactly one project per repo for rollups: the primary link, else the oldest.
+      CREATE VIEW v_repo_project AS
+      SELECT pr.repo_id AS repo_id, pr.project_id AS project_id
+      FROM project_repositories pr
+      WHERE pr.id = (
+        SELECT p2.id FROM project_repositories p2
+        WHERE p2.repo_id = pr.repo_id
+        ORDER BY p2.is_primary DESC, p2.id ASC LIMIT 1);
+    `,
+  },
 ];

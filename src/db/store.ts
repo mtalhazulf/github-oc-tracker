@@ -2,6 +2,16 @@ import type { Database } from "bun:sqlite";
 import { createSqlHelpers } from "./sql.ts";
 import { createEmployeeStore } from "./stores/employees.ts";
 import { createAttributionStore } from "./stores/attribution.ts";
+import { createDeliveryStore } from "./stores/delivery.ts";
+
+export type {
+  ClientRow,
+  ClientInput,
+  ProjectRow,
+  ProjectInput,
+  ProjectRepoRow,
+  AssignmentRow,
+} from "./stores/delivery.ts";
 
 export type {
   EmployeeRow,
@@ -198,6 +208,7 @@ export function createStore(db: Database) {
     ...createSqlHelpers(db),
     ...createEmployeeStore(db),
     ...createAttributionStore(db),
+    ...createDeliveryStore(db),
 
     // ---- organizations ----
 
