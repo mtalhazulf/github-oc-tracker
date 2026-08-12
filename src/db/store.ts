@@ -5,6 +5,8 @@ import { createAttributionStore } from "./stores/attribution.ts";
 import { createDeliveryStore } from "./stores/delivery.ts";
 export type { UserRow, SessionRow, AuditRow } from "./stores/auth.ts";
 import { createAuthStore } from "./stores/auth.ts";
+import { createPayrollStore } from "./stores/payroll.ts";
+export type { CycleRow, PayslipRow, PayslipItemRow, TaxSlabRow } from "./stores/payroll.ts";
 
 export type {
   ClientRow,
@@ -212,6 +214,7 @@ export function createStore(db: Database) {
     ...createAttributionStore(db),
     ...createDeliveryStore(db),
     ...createAuthStore(db),
+    ...createPayrollStore(db),
 
     // ---- organizations ----
 

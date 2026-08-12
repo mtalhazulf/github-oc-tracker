@@ -14,6 +14,8 @@ import { createDeliveryRoutes } from "./routes/delivery.tsx";
 import { createEmployeeService } from "../services/employees.ts";
 import { createIdentityService } from "../services/identities.ts";
 import { createDeliveryService } from "../services/delivery.ts";
+import { createPayrollService } from "../services/payroll.ts";
+import { createPayrollRoutes } from "./routes/payroll.tsx";
 import type { AuthService } from "../services/auth.ts";
 import { requireCapability } from "./middleware/auth.ts";
 import { Layout } from "./views/Layout.tsx";
@@ -338,6 +340,7 @@ export function createRoutes(
 
   app.route("/", createPeopleRoutes(store, createEmployeeService(store), createIdentityService(store), auth));
   app.route("/", createDeliveryRoutes(store, createDeliveryService(store), sync, auth));
+  app.route("/", createPayrollRoutes(store, createPayrollService(store), auth));
 
   return app;
 }

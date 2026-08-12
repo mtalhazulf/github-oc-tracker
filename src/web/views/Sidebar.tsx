@@ -49,6 +49,12 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: "Money",
+    items: [
+      { key: "payroll", href: "/payroll", label: "Payroll", icon: "payroll", capability: "payroll.manage" },
+    ],
+  },
+  {
     label: "Code",
     items: [
       { key: "commits", href: "/commits", label: "Commits", icon: "commits", capability: "code.view" },

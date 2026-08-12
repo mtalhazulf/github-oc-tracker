@@ -352,4 +352,71 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_audit_entity ON audit_log(entity, entity_id);
     `,
   },
+  {
+    version: 6,
+    name: "payroll",
+    sql: `
+      CREATE TABLE payroll_cycles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        period_month TEXT NOT NULL UNIQUE CHECK (period_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'),
+        currency TEXT NOT NULL DEFAULT 'PKR' CHECK (length(currency) = 3 AND currency = upper(currency)),
+        status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','approved','paid','cancelled')),
+        note TEXT,
+        generated_at INTEGER,
+        approved_at INTEGER,
+        paid_at INTEGER,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+      );
+
+      -- A payslip is a DOCUMENT: every figure and label is snapshotted at
+      -- generation, so renaming or re-banding an employee never rewrites history.
+      CREATE TABLE payslips (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cycle_id INTEGER NOT NULL REFERENCES payroll_cycles(id) ON DELETE CASCADE,
+        employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
+        compensation_id INTEGER REFERENCES employee_compensation(id) ON DELETE SET NULL,
+        employee_name TEXT NOT NULL,
+        employee_code TEXT NOT NULL,
+        designation TEXT,
+        department TEXT,
+        currency TEXT NOT NULL CHECK (length(currency) = 3 AND currency = upper(currency)),
+        base_monthly_minor INTEGER NOT NULL CHECK (base_monthly_minor >= 0),
+        period_days  INTEGER NOT NULL CHECK (period_days > 0),
+        payable_days INTEGER NOT NULL CHECK (payable_days >= 0),
+        gross_minor      INTEGER NOT NULL DEFAULT 0 CHECK (gross_minor >= 0),
+        deductions_minor INTEGER NOT NULL DEFAULT 0 CHECK (deductions_minor >= 0),
+        net_minor        INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','final','excluded')),
+        note TEXT,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        UNIQUE (cycle_id, employee_id),
+        CHECK (payable_days <= period_days)
+      );
+      CREATE INDEX idx_payslips_employee ON payslips(employee_id);
+
+      CREATE TABLE payslip_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        payslip_id INTEGER NOT NULL REFERENCES payslips(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL CHECK (kind IN ('earning','deduction')),
+        code TEXT NOT NULL DEFAULT 'other',
+        label TEXT NOT NULL,
+        amount_minor INTEGER NOT NULL CHECK (amount_minor >= 0),
+        sort_order INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE INDEX idx_payslip_items_payslip ON payslip_items(payslip_id);
+
+      -- Tax is DATA, not code: the app ships zero slabs, the owner enters their
+      -- brackets, and with none configured tax is simply a manual deduction line.
+      CREATE TABLE tax_slabs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fiscal_year TEXT NOT NULL,
+        lower_annual_minor INTEGER NOT NULL CHECK (lower_annual_minor >= 0),
+        fixed_annual_minor INTEGER NOT NULL DEFAULT 0 CHECK (fixed_annual_minor >= 0),
+        rate_bp INTEGER NOT NULL DEFAULT 0 CHECK (rate_bp >= 0 AND rate_bp <= 10000),
+        UNIQUE (fiscal_year, lower_annual_minor)
+      );
+    `,
+  },
 ];
