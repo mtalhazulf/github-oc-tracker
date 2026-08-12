@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { createSqlHelpers } from "./sql.ts";
 
 export interface OrgRow {
   id: number;
@@ -183,6 +184,8 @@ const AUTHOR_KEY =
 
 export function createStore(db: Database) {
   return {
+    ...createSqlHelpers(db),
+
     // ---- organizations ----
 
     insertOrg(o: {

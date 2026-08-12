@@ -1,20 +1,16 @@
 import type { Child } from "hono/jsx";
+import { DEFAULT_ROLE, type Role } from "../../domain/rbac.ts";
+import { Sidebar, type NavKey } from "./Sidebar.tsx";
 
 interface Props {
   title: string;
-  active?: "dashboard" | "commits" | "repos" | "orgs" | "settings";
+  active?: NavKey;
+  /** Until accounts land (Phase 3) every request runs as owner. */
+  role?: Role;
   children: Child;
 }
 
-const NAV = [
-  { key: "dashboard", href: "/", label: "Dashboard" },
-  { key: "commits", href: "/commits", label: "Commits" },
-  { key: "repos", href: "/repos", label: "Repositories" },
-  { key: "orgs", href: "/orgs", label: "Organizations" },
-  { key: "settings", href: "/settings", label: "Settings" },
-] as const;
-
-export function Layout({ title, active, children }: Props) {
+export function Layout({ title, active, role = DEFAULT_ROLE, children }: Props) {
   return (
     <html lang="en">
       <head>
@@ -37,35 +33,18 @@ export function Layout({ title, active, children }: Props) {
           Skip to content
         </a>
         <div id="loading-bar" aria-hidden="true"></div>
-        <header class="border-b border-hairline bg-surface">
-          <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3">
-            <a href="/" class="flex items-center gap-2 font-semibold text-ink">
-              <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-accent text-xs font-bold text-white">
-                OC
-              </span>
-              GitHub OC Tracker
-            </a>
-            <nav aria-label="Main" class="flex flex-wrap gap-1 text-sm">
-              {NAV.map((item) => (
-                <a
-                  href={item.href}
-                  aria-current={item.key === active ? "page" : undefined}
-                  class={
-                    item.key === active
-                      ? "rounded-md bg-plane px-3 py-2 font-medium text-ink"
-                      : "rounded-md px-3 py-2 text-ink-2 hover:bg-plane hover:text-ink"
-                  }
-                >
-                  {item.label}
-                </a>
-              ))}
-            </nav>
+
+        <div class="md:grid md:min-h-screen md:grid-cols-[220px_minmax(0,1fr)]">
+          <Sidebar active={active} role={role} />
+          <div class="min-w-0">
+            <main id="main" class="mx-auto max-w-5xl px-4 py-6">
+              {children}
+            </main>
+            <footer class="mx-auto max-w-5xl px-4 py-8 text-xs text-ink-muted">
+              GitHub OC Tracker — self-hosted commit analytics for organizations &amp; repositories.
+            </footer>
           </div>
-        </header>
-        <main id="main" class="mx-auto max-w-6xl px-4 py-6">{children}</main>
-        <footer class="mx-auto max-w-6xl px-4 py-8 text-xs text-ink-muted">
-          GitHub OC Tracker — self-hosted commit analytics for organizations &amp; repositories.
-        </footer>
+        </div>
       </body>
     </html>
   );

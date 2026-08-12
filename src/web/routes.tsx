@@ -4,38 +4,17 @@ import { randomBytes } from "node:crypto";
 import { config } from "../config.ts";
 import { log } from "../logger.ts";
 import type { CommitFilters, Store } from "../db/store.ts";
-import { GitHubError, NotFoundError, RateLimitError } from "../github/client.ts";
 import type { GitHubAppService } from "../github/app.ts";
 import type { SyncService } from "../sync/service.ts";
 import { tzOffsetSeconds } from "./format.ts";
+import { PER_PAGE, friendlyError, page, partial } from "./http.tsx";
+import { createBackup } from "../services/backup.ts";
 import { Layout } from "./views/Layout.tsx";
 import { DashboardContent, DashboardPage, type DashboardData } from "./views/DashboardPage.tsx";
 import { CommitRows, CommitsPage, CommitsTable, type CommitsQuery } from "./views/CommitsPage.tsx";
 import { RepoRowView, ReposPage } from "./views/ReposPage.tsx";
 import { OrgRowView, OrgsPage } from "./views/OrgsPage.tsx";
 import { ManifestForm, SettingsPage, type SettingsData } from "./views/SettingsPage.tsx";
-
-const PER_PAGE = 50;
-
-function page(c: Context, el: { toString(): string | Promise<string> }) {
-  const body = el.toString();
-  if (typeof body === "string") return c.html(`<!DOCTYPE html>${body}`);
-  return body.then((s) => c.html(`<!DOCTYPE html>${s}`));
-}
-
-/** HTMX fragment responses — no doctype. */
-function partial(c: Context, el: Parameters<Context["html"]>[0]) {
-  return c.html(el);
-}
-
-function friendlyError(err: unknown): string {
-  if (err instanceof NotFoundError) {
-    return "Not found on GitHub — check the name, or set GITHUB_TOKEN to access private resources.";
-  }
-  if (err instanceof RateLimitError) return err.message;
-  if (err instanceof GitHubError) return `GitHub API error (${err.status}).`;
-  return err instanceof Error ? err.message : "Unexpected error.";
-}
 
 function parseScope(scope: string): { filters: CommitFilters; orgId?: number; repoId?: number } {
   const m = /^([or]):(\d+)$/.exec(scope);
@@ -315,6 +294,18 @@ export function createRoutes(store: Store, sync: SyncService, appSvc: GitHubAppS
       log.error("manifest conversion failed", { err: String(err) });
       return c.text(`GitHub App creation failed: ${friendlyError(err)}`, 502);
     }
+  });
+
+  app.get("/settings/backup.db", async () => {
+    const { bytes, filename } = await createBackup(store.db);
+    return new Response(bytes, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/vnd.sqlite3",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": String(bytes.byteLength),
+      },
+    });
   });
 
   app.delete("/settings/github-app", (c) => {

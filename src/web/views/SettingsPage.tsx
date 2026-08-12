@@ -191,6 +191,26 @@ export function SettingsPage({ d }: { d: SettingsData }) {
         </div>
       </Card>
 
+      <Card
+        title="Backup"
+        subtitle="Every commit, and soon every salary, lives in one SQLite file. It exists nowhere else."
+      >
+        <div class="flex flex-wrap items-center gap-3 text-sm">
+          <a
+            href="/settings/backup.db"
+            class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white"
+            download
+          >
+            Download backup
+          </a>
+          <p class="text-xs text-ink-2">
+            A consistent copy taken with <code>VACUUM INTO</code> — safe to run while the app is
+            live. To restore: stop the container, replace <code>/data/tracker.db</code>, delete any{" "}
+            <code>-wal</code> and <code>-shm</code> files, start it again.
+          </p>
+        </div>
+      </Card>
+
       <Card title="Recent webhook deliveries" subtitle="Last 20 deliveries received by this deployment">
         {d.events.length === 0 ? (
           <p class="text-sm text-ink-muted">Nothing received yet.</p>

@@ -1,3 +1,15 @@
+// Mobile navigation toggle. The sidebar is a plain grid column at md and up;
+// below that it collapses and this button reveals it.
+(function () {
+  var toggle = document.getElementById("nav-toggle");
+  var nav = document.getElementById("nav");
+  if (!toggle || !nav) return;
+  toggle.addEventListener("click", function () {
+    var open = nav.classList.toggle("hidden") === false;
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+})();
+
 // Global progress bar for HTMX requests. Elements inside [data-quiet]
 // (background row polling) don't trigger it.
 (function () {

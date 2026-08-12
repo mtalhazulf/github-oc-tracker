@@ -18,6 +18,18 @@ function open(path: string): Database {
 }
 
 export function migrate(database: Database): void {
+  // Fail with a named error rather than "UNIQUE constraint failed" mid-transaction
+  // at boot. Parallel feature branches each appending a migration is the normal
+  // way this happens, and a crash-loop with half the schema applied is a bad way
+  // to find out.
+  const seen = new Set<number>();
+  for (const m of migrations) {
+    if (seen.has(m.version)) {
+      throw new Error(`Duplicate migration version ${m.version} ("${m.name}") — versions must be unique`);
+    }
+    seen.add(m.version);
+  }
+
   database.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       version INTEGER PRIMARY KEY,
