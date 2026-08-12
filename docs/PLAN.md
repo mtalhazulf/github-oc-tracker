@@ -1510,6 +1510,7 @@ Target: **~130 tests** at completion, all on `createDb(":memory:")`, no network,
 | 11 | Archived rows hold their unique `code`, so re-creating fails confusingly | Med | Low | Create form checks for an archived row first and offers Restore |
 | 12 | No timesheets → T&M revenue and true hourly margin are unknowable | Certain | Med | Ship invoices (real revenue) + payroll-derived cost (real cost); never label an estimate as actual; `time_entries` plugs in later with no change to anything above |
 | 13 | 15 new tables against a "not an ERP" brief reads as scope creep | — | Low | Every table maps to a stated requirement; the discipline shows in §1's out-of-scope list and the ~20 items cut in §12 |
+| 14 | **`bun:sqlite` binds NULL silently when a named-parameter object key omits its sigil** — `q.get({ periodEnd })` against `:periodEnd` throws nothing and returns NULL, so a payslip generates 0 payable days instead of 16 | **High** (every query in §7–§8 is written with `:named` params) | High | **Convention: bind positionally (`?`), matching all 43 existing store methods.** Where a query genuinely needs named params, the object key carries the sigil (`{ $periodEnd: … }`) — verified in Bun 1.3.11: no-sigil returns `null`, `$`-prefixed returns `31`. `tests/payroll.test.ts` pins the 31/16 result, which fails loudly if a binding regresses. |
 
 ---
 
