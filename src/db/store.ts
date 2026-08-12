@@ -1,5 +1,16 @@
 import type { Database } from "bun:sqlite";
 import { createSqlHelpers } from "./sql.ts";
+import { createEmployeeStore } from "./stores/employees.ts";
+import { createAttributionStore } from "./stores/attribution.ts";
+
+export type {
+  EmployeeRow,
+  EmployeeInput,
+  EmployeeFilters,
+  CompensationRow,
+  IdentityRow,
+} from "./stores/employees.ts";
+export type { UnmappedAuthor, ContributionRow } from "./stores/attribution.ts";
 
 export interface OrgRow {
   id: number;
@@ -185,6 +196,8 @@ const AUTHOR_KEY =
 export function createStore(db: Database) {
   return {
     ...createSqlHelpers(db),
+    ...createEmployeeStore(db),
+    ...createAttributionStore(db),
 
     // ---- organizations ----
 

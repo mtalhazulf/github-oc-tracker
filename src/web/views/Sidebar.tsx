@@ -41,11 +41,18 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: "Delivery",
+    items: [
+      { key: "employees", href: "/employees", label: "People", icon: "people", capability: "people.view" },
+    ],
+  },
+  {
     label: "Code",
     items: [
       { key: "commits", href: "/commits", label: "Commits", icon: "commits", capability: "code.view" },
       { key: "repos", href: "/repos", label: "Repositories", icon: "repos", capability: "code.view" },
       { key: "orgs", href: "/orgs", label: "Organizations", icon: "orgs", capability: "code.view" },
+      { key: "mapping", href: "/people/unmapped", label: "Author mapping", icon: "mapping", capability: "people.manage" },
     ],
   },
   {

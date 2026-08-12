@@ -9,6 +9,9 @@ import type { SyncService } from "../sync/service.ts";
 import { tzOffsetSeconds } from "./format.ts";
 import { PER_PAGE, friendlyError, page, partial } from "./http.tsx";
 import { createBackup } from "../services/backup.ts";
+import { createPeopleRoutes } from "./routes/people.tsx";
+import { createEmployeeService } from "../services/employees.ts";
+import { createIdentityService } from "../services/identities.ts";
 import { Layout } from "./views/Layout.tsx";
 import { DashboardContent, DashboardPage, type DashboardData } from "./views/DashboardPage.tsx";
 import { CommitRows, CommitsPage, CommitsTable, type CommitsQuery } from "./views/CommitsPage.tsx";
@@ -316,6 +319,10 @@ export function createRoutes(store: Store, sync: SyncService, appSvc: GitHubAppS
     c.header("HX-Redirect", "/settings");
     return c.text("ok");
   });
+
+  // ---- feature modules ----
+
+  app.route("/", createPeopleRoutes(store, createEmployeeService(store), createIdentityService(store)));
 
   return app;
 }
