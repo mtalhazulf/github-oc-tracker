@@ -11,6 +11,10 @@ import { friendlyError, page, partial } from "../http.tsx";
 import { tzOffsetSeconds } from "../format.ts";
 import { Layout } from "../views/Layout.tsx";
 import { ClientDetailPage, ClientForm, ClientsPage, ClientsTable } from "../views/ClientsPage.tsx";
+import { ProjectPnl } from "../views/EconomicsPage.tsx";
+import { createEconomicsService } from "../../services/economics.ts";
+import { currentPeriod } from "../../domain/period.ts";
+import { config } from "../../config.ts";
 import {
   ProjectDetailPage,
   ProjectForm,
@@ -309,6 +313,12 @@ export function createDeliveryRoutes(
           contributors={store.projectContributors(id, sinceTs)}
           perDay={store.projectCommitsPerDay(id, sinceTs, tzOffsetSeconds)}
           days={ACTIVITY_DAYS}
+          pnl={
+            <ProjectPnl
+              pnl={createEconomicsService(store).projectPnl(id, currentPeriod(config.tzOffsetMinutes))}
+              period={currentPeriod(config.tzOffsetMinutes)}
+            />
+          }
         />
       </Layout>,
     );

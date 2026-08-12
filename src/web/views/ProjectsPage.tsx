@@ -494,6 +494,7 @@ export function ProjectDetailPage({
   contributors,
   perDay,
   days,
+  pnl,
 }: {
   project: ProjectRow;
   repos: ProjectRepoRow[];
@@ -514,6 +515,7 @@ export function ProjectDetailPage({
   contributors: { employee_id: number | null; name: string; commits: number }[];
   perDay: { day: string; n: number }[];
   days: number;
+  pnl?: unknown;
 }) {
   const dayMap = new Map(perDay.map((p) => [p.day, p.n]));
   const now = Date.now();
@@ -652,6 +654,8 @@ export function ProjectDetailPage({
           </Card>
 
           <TeamPanel project={project} assignments={assignments} employees={employees} />
+
+          {pnl ?? null}
 
           <Card title="Details">
             <dl class="space-y-2 text-sm">

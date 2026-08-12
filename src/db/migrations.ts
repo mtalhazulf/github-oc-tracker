@@ -419,4 +419,28 @@ export const migrations: Migration[] = [
       );
     `,
   },
+  {
+    version: 7,
+    name: "invoices",
+    sql: `
+      CREATE TABLE invoices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        number TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE RESTRICT,
+        project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+        currency TEXT NOT NULL CHECK (length(currency) = 3 AND currency = upper(currency)),
+        amount_minor INTEGER NOT NULL CHECK (amount_minor >= 0),
+        issued_on TEXT NOT NULL CHECK (issued_on GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+        due_on TEXT NOT NULL CHECK (due_on GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+        paid_on TEXT CHECK (paid_on IS NULL OR paid_on GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+        status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','sent','paid','void')),
+        note TEXT,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        CHECK (due_on >= issued_on)
+      );
+      CREATE INDEX idx_invoices_client ON invoices(client_id);
+      CREATE INDEX idx_invoices_status_due ON invoices(status, due_on);
+    `,
+  },
 ];
