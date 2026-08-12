@@ -1,13 +1,24 @@
 # GitHub OC Tracker
 
-Self-hosted tracker for **all GitHub commits — and when they happen — across every
-repository in an organization**, plus any individual repositories you add. Point it
-at an org (or user account), and it discovers every repo, pulls the full commit
-history into SQLite, keeps it up to date in the background, and gives you a
-dashboard of commit times, trends, and contributors.
+A self-hosted operating system for a **service-based software house**: clients,
+projects, people, payroll and invoicing, with your GitHub commit history as the
+activity substrate underneath. The same SQLite file that knows *who pushed what,
+when* also knows who those people are, what they cost, which client project they
+were working on, and what that project was sold for.
 
 Built with **Hono + Bun + HTMX + Tailwind CSS + SQLite**, shipped as a single
 container via **Docker Compose**.
+
+## What it does
+
+| Area | What you get |
+|---|---|
+| **Delivery** | Clients and projects, where a project spans **any number of repositories**. Client projects require a client; internal products cannot have one and are never billed — enforced by the database, not by convention. |
+| **People** | Employees with effective-dated compensation, and **GitHub identity mapping**: many logins and commit emails per person, so commits attribute to real people. A mapping inbox with bot filtering keeps it maintainable. |
+| **Payroll** | Monthly cycles producing snapshotted payslips — pro-rated for mid-month joiners and leavers, with generic earning/deduction lines, owner-configured tax slabs, CSV export and a print view. |
+| **Economics** | Invoices and AR aging, an 8-week capacity grid with bench %, and project margin derived from **actual payslips** rather than an estimate. |
+| **Code** | Everything the tracker did before: org-wide commit sync, commit-time analytics, GitHub App install, real-time webhooks. |
+| **Platform** | Accounts with four roles, CSRF protection, audit log, one-click backup, and a small read-only JSON API. |
 
 ## Features
 
@@ -88,15 +99,64 @@ content type `application/json`, secret equal to your `WEBHOOK_SECRET`, and the
 **push** + **repository** events. Deliveries are rejected unless the HMAC
 signature matches.
 
+## First run
+
+On a fresh database every route redirects to `/setup`, where you create the owner
+account. Nothing is reachable until that exists — payroll data must never sit
+behind a shared password.
+
+A sensible order afterwards: add your **organization** (Code → Organizations) so
+commits start syncing, map commit authors to **people**, then create **clients**
+and **projects** and link repositories to them.
+
 ## Local development
 
 ```sh
 bun install
 cp .env.example .env
 bun run dev          # builds CSS, then serves with hot reload on :3000
-bun test             # unit tests
+bun test             # 223 unit tests
 bun run typecheck    # strict TypeScript
+
+# demo data to click around in (refuses to touch a real database)
+SEED_CONFIRM=yes DB_PATH=./data/demo.db bun run seed
 ```
+
+## Roles
+
+| Capability | owner | admin | manager | member |
+|---|:--:|:--:|:--:|:--:|
+| Dashboard, commits, repositories | ✅ | ✅ | ✅ | ✅ |
+| Clients, projects, people (view) | ✅ | ✅ | ✅ | ✅ |
+| Create/edit delivery and people | ✅ | ✅ | ✅ | — |
+| **Salaries and payroll** | ✅ | ✅ | — | — |
+| Own payslip | ✅ | ✅ | ✅ | ✅ |
+| Invoices and capacity | ✅ | ✅ | view only | — |
+| Settings, backup, tokens, audit | ✅ | ✅ | — | — |
+| Manage accounts | ✅ | — | — | — |
+
+Roles are enforced by route middleware, not only by hiding navigation. The last
+owner cannot be demoted or deleted.
+
+## JSON API
+
+A deliberately small read-only surface for your own scripts, under `/api/v1`,
+authenticated with `Authorization: Bearer <token>` (create one in Settings →
+API tokens; only its hash is stored). Responses are `{data, meta}`; errors are
+`{error: {code, message, fields?}}`.
+
+```
+GET /api/v1/clients            /api/v1/projects            /api/v1/projects/:id
+GET /api/v1/projects/:id/activity                          /api/v1/employees
+GET /api/v1/employees/:id/contribution                     /api/v1/commits
+GET /api/v1/payroll/cycles     /api/v1/payroll/cycles/:id/payslips
+GET /api/v1/invoices
+```
+
+The HTMX UI does **not** call this API. Both surfaces call the same service layer
+in-process — `bun:sqlite` transactions are process-local, so an HTTP hop between
+UI and logic would put two writes in different call stacks with nothing able to
+roll back.
 
 ## Configuration
 
@@ -123,15 +183,29 @@ All configuration is via environment variables (see `.env.example`):
 ## Architecture
 
 ```
-Browser (HTMX + Tailwind, server-rendered JSX)        GitHub (push/repo/installation webhooks)
-   │                                                     │ HMAC-verified
-Hono on Bun ── / /commits /repos /orgs /settings ── /webhooks/github ── /healthz
-   │                                                     │
+domain/      pure TypeScript: money, dates, tax, validation, roles. No db, no http.
+   ↓
+db/stores/   SQL only, one module per aggregate
+   ↓
+services/    business rules, transactions, invariants
+   ↓
+adapters:    web/ (HTMX + server-rendered JSX)      api/v1 (JSON)
+```
+
+```
+Browser (HTMX)                          GitHub (push/repo/installation webhooks)
+   │                                       │ HMAC-verified
+Hono on Bun ── session + CSRF ── routes ── /webhooks/github ── /healthz
+   │
 SyncService ── bounded worker queue, incremental per-repo sync
    │                │
 SQLite (WAL) ◄──────┘   GitHub REST API — PAT or GitHub App installation tokens
-                        (RS256 app JWT → cached per-installation access tokens)
 ```
+
+Money is stored as integer minor units and parsed from strings, so `0.1` never
+becomes `10.000000000000002`. Amounts in different currencies are never summed;
+where a margin would require an exchange rate, the app reports both figures and
+withholds the derived number instead of inventing one.
 
 - **Sync model**: each repo stores its latest committer timestamp; syncs request
   commits `since` that point minus a 10-minute overlap, and the `(repo_id, sha)`

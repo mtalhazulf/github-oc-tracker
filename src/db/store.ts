@@ -4,7 +4,8 @@ import { createEmployeeStore } from "./stores/employees.ts";
 import { createAttributionStore } from "./stores/attribution.ts";
 import { createDeliveryStore } from "./stores/delivery.ts";
 export type { UserRow, SessionRow, AuditRow } from "./stores/auth.ts";
-import { createAuthStore } from "./stores/auth.ts";
+import { createAuthStore, createApiTokenStore } from "./stores/auth.ts";
+export type { ApiTokenRow } from "./stores/auth.ts";
 import { createPayrollStore } from "./stores/payroll.ts";
 import { createEconomicsStore } from "./stores/economics.ts";
 export type { InvoiceRow, AgingBucket, CapacityCell } from "./stores/economics.ts";
@@ -216,6 +217,7 @@ export function createStore(db: Database) {
     ...createAttributionStore(db),
     ...createDeliveryStore(db),
     ...createAuthStore(db),
+    ...createApiTokenStore(db),
     ...createPayrollStore(db),
     ...createEconomicsStore(db),
 

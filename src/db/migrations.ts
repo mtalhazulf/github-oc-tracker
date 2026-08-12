@@ -443,4 +443,21 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_invoices_status_due ON invoices(status, due_on);
     `,
   },
+  {
+    version: 8,
+    name: "api tokens",
+    sql: `
+      -- Only the SHA-256 of a token is stored; the plaintext is shown once at
+      -- creation and is unrecoverable afterwards.
+      CREATE TABLE api_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        prefix TEXT NOT NULL,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        last_used_at INTEGER
+      );
+    `,
+  },
 ];

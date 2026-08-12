@@ -13,6 +13,7 @@ import { createAuthRoutes } from "./web/routes/auth.tsx";
 import { createAuthService } from "./services/auth.ts";
 import { csrfMiddleware, sessionMiddleware } from "./web/middleware/auth.ts";
 import { AppError } from "./domain/errors.ts";
+import { createApiRoutes } from "./api/v1.ts";
 
 function errorPage(title: string, detail: string): string {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
@@ -95,6 +96,7 @@ export function buildApp(store: Store, sync: SyncService, appSvc: GitHubAppServi
   app.use("*", sessionMiddleware(auth));
   app.use("*", csrfMiddleware());
 
+  app.route("/", createApiRoutes(store));
   app.route("/", createAuthRoutes(store, auth));
   app.route("/", createRoutes(store, sync, appSvc, auth));
 

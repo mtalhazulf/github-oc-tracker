@@ -187,3 +187,44 @@ export function createAuthStore(db: Database) {
     },
   };
 }
+
+export interface ApiTokenRow {
+  id: number;
+  name: string;
+  token_hash: string;
+  prefix: string;
+  user_id: number | null;
+  created_at: number;
+  last_used_at: number | null;
+}
+
+/** API tokens live beside accounts: same lifecycle, same audit surface. */
+export function createApiTokenStore(db: Database) {
+  return {
+    listApiTokens(): ApiTokenRow[] {
+      return db.query("SELECT * FROM api_tokens ORDER BY created_at DESC").all() as ApiTokenRow[];
+    },
+
+    findApiToken(tokenHash: string): ApiTokenRow | null {
+      return (
+        (db.query("SELECT * FROM api_tokens WHERE token_hash = ?").get(tokenHash) as ApiTokenRow | undefined) ??
+        null
+      );
+    },
+
+    insertApiToken(input: { name: string; tokenHash: string; prefix: string; userId: number | null }): number {
+      const res = db
+        .query("INSERT INTO api_tokens (name, token_hash, prefix, user_id) VALUES (?, ?, ?, ?)")
+        .run(input.name, input.tokenHash, input.prefix, input.userId);
+      return Number(res.lastInsertRowid);
+    },
+
+    touchApiToken(id: number): void {
+      db.query("UPDATE api_tokens SET last_used_at = unixepoch() WHERE id = ?").run(id);
+    },
+
+    deleteApiToken(id: number): void {
+      db.query("DELETE FROM api_tokens WHERE id = ?").run(id);
+    },
+  };
+}

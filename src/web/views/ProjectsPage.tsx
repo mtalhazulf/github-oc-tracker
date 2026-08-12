@@ -332,14 +332,25 @@ export function RepoPanel({
                 ) : (
                   <span class="text-ink">{r.full_name}</span>
                 )}
-                {r.is_primary === 1 ? (
-                  <Badge label="primary" tone="good" title="Company rollups count this repo here" />
-                ) : null}
+                {/* The primary flag only means something once a repo is shared,
+                    so the badge stays off until it does — otherwise every row
+                    carries a word the reader has no use for. */}
                 {r.shared_with > 0 ? (
-                  <Badge
-                    label={`shared with ${r.shared_with}`}
-                    title="Also linked to another project. Rollups count it once, under the primary."
-                  />
+                  <>
+                    <Badge
+                      label={`shared with ${r.shared_with}`}
+                      title="Also linked to another project. Company rollups count it once."
+                    />
+                    <Badge
+                      label={r.is_primary === 1 ? "counted here" : "counted elsewhere"}
+                      tone={r.is_primary === 1 ? "good" : "neutral"}
+                      title={
+                        r.is_primary === 1
+                          ? "Company-wide rollups attribute this repo's commits to this project."
+                          : "Company-wide rollups attribute this repo's commits to the other project."
+                      }
+                    />
+                  </>
                 ) : null}
                 <span class="text-xs text-ink-2">{r.commit_count.toLocaleString("en-US")} commits</span>
                 <span class="ml-auto flex items-center gap-1">

@@ -6,9 +6,13 @@ import { ForbiddenError } from "../../domain/errors.ts";
 import { SESSION_COOKIE, tokensMatch, type AuthService, type Principal } from "../../services/auth.ts";
 import { runWithContext } from "../request-context.ts";
 
-/** Routes reachable without a session. Everything else requires one. */
+/**
+ * Routes this middleware does not gate. `/api/` is listed because the JSON API
+ * runs its own bearer-token check and must answer 401 with an error body — an
+ * HTML redirect to /login is useless to a script and hides the real reason.
+ */
 const PUBLIC_PATHS = new Set(["/login", "/logout", "/setup", "/healthz"]);
-const PUBLIC_PREFIXES = ["/webhooks/", "/app.css", "/app.js", "/htmx.min.js"];
+const PUBLIC_PREFIXES = ["/webhooks/", "/api/", "/app.css", "/app.js", "/htmx.min.js"];
 
 function isPublic(path: string): boolean {
   return PUBLIC_PATHS.has(path) || PUBLIC_PREFIXES.some((p) => path.startsWith(p));

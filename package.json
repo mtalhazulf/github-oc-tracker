@@ -10,7 +10,8 @@
     "css": "bunx @tailwindcss/cli -i src/styles/input.css -o public/app.css --minify",
     "css:watch": "bunx @tailwindcss/cli -i src/styles/input.css -o public/app.css --watch",
     "typecheck": "bunx tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "seed": "bun src/db/seed.ts"
   },
   "dependencies": {
     "hono": "^4.6.0"
