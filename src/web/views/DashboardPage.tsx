@@ -1,5 +1,6 @@
 import type { CommitRow, OrgRow, RepoRow } from "../../db/store.ts";
 import {
+  fmtDateTime,
   fmtDay,
   firstLine,
   hourLabel,
@@ -37,13 +38,49 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
   return (
     <section class="rounded-lg border border-hairline bg-surface p-4">
       <h2 class="text-sm font-semibold text-ink">{title}</h2>
-      {subtitle ? <p class="mb-3 mt-0.5 text-xs text-ink-muted">{subtitle}</p> : <div class="mb-3"></div>}
+      {subtitle ? <p class="mb-3 mt-0.5 text-xs text-ink-2">{subtitle}</p> : <div class="mb-3"></div>}
       {children}
     </section>
   );
 }
 
+/** First-run onboarding: shown instead of empty charts (nothing to read yet). */
+function GetStarted() {
+  return (
+    <section class="rounded-lg border border-hairline bg-surface p-8 text-center">
+      <h2 class="text-lg font-semibold text-ink">Start tracking commits</h2>
+      <p class="mx-auto mt-2 max-w-md text-sm text-ink-2">
+        Add a GitHub organization to track every repository it owns, or add individual repositories.
+        Commit history backfills automatically, and charts appear here as data arrives.
+      </p>
+      <div class="mt-5 flex flex-wrap justify-center gap-3">
+        <a href="/orgs" class="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white">
+          Add an organization
+        </a>
+        <a
+          href="/repos"
+          class="rounded-md border border-hairline bg-surface px-5 py-2.5 text-sm font-medium text-ink"
+        >
+          Add a repository
+        </a>
+      </div>
+      <p class="mt-4 text-xs text-ink-2">
+        Tip: install the GitHub App from <a href="/settings" class="text-accent hover:underline">Settings</a>{" "}
+        to grant repositories without a personal token and get real-time updates.
+      </p>
+    </section>
+  );
+}
+
 export function DashboardContent({ d }: { d: DashboardData }) {
+  if (d.repos.length === 0 && d.orgs.length === 0) {
+    return (
+      <div id="dashboard-content">
+        <GetStarted />
+      </div>
+    );
+  }
+
   const dayMap = new Map(d.perDay.map((p) => [p.day, p.n]));
   // Shift "now" by the display offset so day buckets line up with the SQL grouping.
   const now = Date.now() + tzOffsetSeconds * 1000;
@@ -70,6 +107,12 @@ export function DashboardContent({ d }: { d: DashboardData }) {
 
   return (
     <div id="dashboard-content" class="space-y-4">
+      {d.totalCommits === 0 ? (
+        <p class="rounded-lg border border-hairline bg-surface p-3 text-sm text-ink-2">
+          <span class="htmx-spin inline-block">⟳</span> First sync in progress — commit history is
+          backfilling and charts fill in as data arrives.
+        </p>
+      ) : null}
       <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile label="Total commits" value={d.totalCommits} />
         <StatTile
@@ -82,7 +125,12 @@ export function DashboardContent({ d }: { d: DashboardData }) {
       </div>
 
       <Card title={`Commits per day — last ${d.days} days`} subtitle={`Author dates, ${tzLabel}`}>
-        <ColumnChart points={perDayPoints} slot={22} labelEvery={5} />
+        <ColumnChart
+          points={perDayPoints}
+          slot={22}
+          labelEvery={5}
+          ariaLabel={`Column chart of commits per day over the last ${d.days} days`}
+        />
       </Card>
 
       <Card title="Commit times" subtitle={`All commits in scope by day of week and hour, ${tzLabel}`}>
@@ -91,17 +139,28 @@ export function DashboardContent({ d }: { d: DashboardData }) {
 
       <div class="grid gap-4 lg:grid-cols-2">
         <Card title="Commits by hour of day" subtitle={tzLabel}>
-          <ColumnChart points={hourPoints} slot={24} labelEvery={3} height={150} />
+          <ColumnChart
+            points={hourPoints}
+            slot={24}
+            labelEvery={3}
+            height={150}
+            ariaLabel="Column chart of commits by hour of day"
+          />
         </Card>
         <Card title="Commits by day of week" subtitle={tzLabel}>
-          <ColumnChart points={weekdayPoints} slot={44} height={150} />
+          <ColumnChart
+            points={weekdayPoints}
+            slot={44}
+            height={150}
+            ariaLabel="Column chart of commits by day of week"
+          />
         </Card>
       </div>
 
       <div class="grid gap-4 lg:grid-cols-2">
         <Card title="Top contributors" subtitle="By commit count, all time in scope">
           {d.topAuthors.length === 0 ? (
-            <p class="text-sm text-ink-muted">No commits yet.</p>
+            <p class="text-sm text-ink-2">No commits yet.</p>
           ) : (
             <ul class="space-y-2">
               {d.topAuthors.map((a) => (
@@ -126,7 +185,7 @@ export function DashboardContent({ d }: { d: DashboardData }) {
 
         <Card title="Recent commits" subtitle="Latest activity in scope">
           {d.recent.length === 0 ? (
-            <p class="text-sm text-ink-muted">
+            <p class="text-sm text-ink-2">
               No commits yet. Add an organization or repository to start tracking.
             </p>
           ) : (
@@ -145,9 +204,9 @@ export function DashboardContent({ d }: { d: DashboardData }) {
                       {firstLine(commit.message)}
                     </span>
                   </div>
-                  <div class="mt-0.5 text-xs text-ink-muted">
+                  <div class="mt-0.5 text-xs text-ink-2">
                     {commit.author_login ?? commit.author_name ?? "unknown"} · {commit.repo_full_name} ·{" "}
-                    {timeAgo(commit.author_ts)}
+                    <span title={fmtDateTime(commit.author_ts)}>{timeAgo(commit.author_ts)}</span>
                   </div>
                 </li>
               ))}

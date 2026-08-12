@@ -10,6 +10,18 @@ import type { SyncService } from "./sync/service.ts";
 import { createRoutes } from "./web/routes.tsx";
 import { createWebhookRoutes } from "./web/webhooks.ts";
 
+function errorPage(title: string, detail: string): string {
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>${title} · GitHub OC Tracker</title><link rel="stylesheet" href="/app.css"/></head>
+<body class="min-h-screen bg-plane text-ink">
+<main class="mx-auto max-w-lg px-4 py-24 text-center">
+<h1 class="text-xl font-semibold">${title}</h1>
+<p class="mt-2 text-sm text-ink-2">${detail}</p>
+<a href="/" class="mt-6 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">Back to dashboard</a>
+</main></body></html>`;
+}
+
 export function buildApp(store: Store, sync: SyncService, appSvc: GitHubAppService): Hono {
   const app = new Hono();
 
@@ -71,14 +83,20 @@ export function buildApp(store: Store, sync: SyncService, appSvc: GitHubAppServi
   }
 
   app.use("/app.css", serveStatic({ path: "./public/app.css" }));
+  app.use("/app.js", serveStatic({ path: "./public/app.js" }));
   app.use("/htmx.min.js", serveStatic({ path: "./public/htmx.min.js" }));
 
   app.route("/", createRoutes(store, sync, appSvc));
 
-  app.notFound((c) => c.text("Not found", 404));
+  app.notFound((c) =>
+    c.html(errorPage("Page not found", "That page doesn't exist — it may have been moved or removed."), 404),
+  );
   app.onError((err, c) => {
     log.error("unhandled error", { path: c.req.path, err: err.message, stack: err.stack });
-    return c.text("Internal server error", 500);
+    return c.html(
+      errorPage("Something went wrong", "The error has been logged. Try again, or head back to the dashboard."),
+      500,
+    );
   });
 
   return app;

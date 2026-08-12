@@ -20,10 +20,19 @@ export function Punchcard({ cells }: Props) {
     if (n === 0 || max === 0) return 0;
     return Math.min(7, Math.max(1, Math.ceil((n / max) * 7)));
   };
+  const peak = cells.reduce(
+    (best, c) => (c.n > best.n ? c : best),
+    { weekday: 0, hour: 0, n: 0 },
+  );
+  const summary =
+    peak.n === 0
+      ? "Heatmap of commits by day of week and hour. No commits yet."
+      : `Heatmap of commits by day of week and hour. Most commits happen ${WEEKDAY_NAMES[peak.weekday]} around ${hourLabel(peak.hour)} (${peak.n.toLocaleString("en-US")} commits).`;
 
   return (
-    <div class="overflow-x-auto">
-      <div class="inline-block min-w-max">
+    <div class="overflow-x-auto" tabindex={0} role="group" aria-label="Commit times heatmap">
+      <p class="sr-only">{summary}</p>
+      <div class="inline-block min-w-max" aria-hidden="true">
         <div class="grid gap-[2px]" style="grid-template-columns: 34px repeat(24, 18px)">
           {WEEKDAY_ORDER.map((wd) => (
             <>

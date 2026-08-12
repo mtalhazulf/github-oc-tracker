@@ -1,5 +1,5 @@
 import type { RepoRow, SyncRunRow } from "../../db/store.ts";
-import { compact, timeAgo } from "../format.ts";
+import { compact, fmtDateTime, timeAgo } from "../format.ts";
 import { SyncBadge } from "./components/SyncBadge.tsx";
 
 export function RepoRowView({ repo }: { repo: RepoRow }) {
@@ -9,7 +9,12 @@ export function RepoRowView({ repo }: { repo: RepoRow }) {
       id={`repo-row-${repo.id}`}
       class="border-t border-hairline"
       {...(polling
-        ? { "hx-get": `/repos/${repo.id}/row`, "hx-trigger": "load delay:3s", "hx-swap": "outerHTML" }
+        ? {
+            "hx-get": `/repos/${repo.id}/row`,
+            "hx-trigger": "load delay:3s",
+            "hx-swap": "outerHTML",
+            "data-quiet": "1",
+          }
         : {})}
     >
       <td class="py-2 pr-3">
@@ -34,14 +39,18 @@ export function RepoRowView({ repo }: { repo: RepoRow }) {
       <td class="whitespace-nowrap py-2 pr-3 text-ink-2">{repo.org_login ?? "—"}</td>
       <td class="whitespace-nowrap py-2 pr-3 tabular-nums text-ink-2">{compact(repo.commit_count)}</td>
       <td class="whitespace-nowrap py-2 pr-3 text-ink-2">
-        {repo.last_synced_at ? timeAgo(repo.last_synced_at) : "never"}
+        {repo.last_synced_at ? (
+          <span title={fmtDateTime(repo.last_synced_at)}>{timeAgo(repo.last_synced_at)}</span>
+        ) : (
+          "never"
+        )}
       </td>
       <td class="whitespace-nowrap py-2 pr-3">
         <SyncBadge status={repo.sync_status} error={repo.sync_error} />
       </td>
       <td class="whitespace-nowrap py-2 text-right">
         <button
-          class="rounded-md border border-hairline px-2.5 py-1 text-xs text-ink-2 hover:text-ink"
+          class="rounded-md border border-hairline px-3 py-1.5 text-xs text-ink-2 hover:text-ink"
           hx-post={`/repos/${repo.id}/sync`}
           hx-target={`#repo-row-${repo.id}`}
           hx-swap="outerHTML"
@@ -49,7 +58,7 @@ export function RepoRowView({ repo }: { repo: RepoRow }) {
           Sync now
         </button>
         <button
-          class="ml-1 rounded-md border border-hairline px-2.5 py-1 text-xs text-status-critical"
+          class="ml-1 rounded-md border border-hairline px-3 py-1.5 text-xs text-status-critical"
           hx-delete={`/repos/${repo.id}`}
           hx-confirm={`Remove ${repo.full_name} and all its tracked commits?`}
           hx-target={`#repo-row-${repo.id}`}
@@ -67,18 +76,32 @@ export function ReposPage({ repos, runs }: { repos: RepoRow[]; runs: SyncRunRow[
     <div>
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 class="text-xl font-semibold text-ink">Repositories</h1>
-        <form hx-post="/repos" hx-target="#repo-form-error" hx-swap="innerHTML" class="flex items-center gap-2">
+        <form
+          hx-post="/repos"
+          hx-target="#repo-form-error"
+          hx-swap="innerHTML"
+          hx-disabled-elt="find button"
+          class="flex items-center gap-2"
+        >
+          <label for="repo-input" class="sr-only">
+            Repository to add
+          </label>
           <input
+            id="repo-input"
             type="text"
             name="full_name"
             required
-            placeholder="owner/repository"
-            class="w-64 rounded-md border border-hairline bg-surface px-3 py-1.5 text-sm text-ink placeholder:text-ink-muted"
+            pattern=".*\S+/\S+.*"
+            title="owner/repository — a GitHub URL works too"
+            placeholder="owner/repository or GitHub URL"
+            class="w-72 rounded-md border border-hairline bg-surface px-3 py-1.5 text-sm text-ink placeholder:text-ink-muted"
           />
-          <button type="submit" class="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-white">
+          <button type="submit" class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">
             Add repository
           </button>
-          <span class="htmx-indicator text-xs text-ink-muted">Adding…</span>
+          <span class="htmx-indicator text-xs text-ink-2" role="status">
+            Adding…
+          </span>
         </form>
       </div>
       <div id="repo-form-error" class="mb-3 text-sm text-status-critical"></div>
@@ -86,7 +109,7 @@ export function ReposPage({ repos, runs }: { repos: RepoRow[]; runs: SyncRunRow[
       <div class="overflow-x-auto rounded-lg border border-hairline bg-surface px-4 pb-2">
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-xs text-ink-muted">
+            <tr class="text-left text-xs text-ink-2">
               <th class="py-2 pr-3 font-medium">Repository</th>
               <th class="py-2 pr-3 font-medium">Organization</th>
               <th class="py-2 pr-3 font-medium">Commits</th>
@@ -98,7 +121,7 @@ export function ReposPage({ repos, runs }: { repos: RepoRow[]; runs: SyncRunRow[
           <tbody>
             {repos.length === 0 ? (
               <tr class="border-t border-hairline">
-                <td colspan={6} class="py-6 text-center text-ink-muted">
+                <td colspan={6} class="py-6 text-center text-ink-2">
                   No repositories tracked yet. Add one above, or add a whole organization.
                 </td>
               </tr>
@@ -113,7 +136,7 @@ export function ReposPage({ repos, runs }: { repos: RepoRow[]; runs: SyncRunRow[
       <div class="overflow-x-auto rounded-lg border border-hairline bg-surface px-4 pb-2">
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-xs text-ink-muted">
+            <tr class="text-left text-xs text-ink-2">
               <th class="py-2 pr-3 font-medium">Repository</th>
               <th class="py-2 pr-3 font-medium">Started</th>
               <th class="py-2 pr-3 font-medium">Duration</th>
@@ -124,7 +147,7 @@ export function ReposPage({ repos, runs }: { repos: RepoRow[]; runs: SyncRunRow[
           <tbody>
             {runs.length === 0 ? (
               <tr class="border-t border-hairline">
-                <td colspan={5} class="py-4 text-center text-ink-muted">
+                <td colspan={5} class="py-4 text-center text-ink-2">
                   No sync runs yet.
                 </td>
               </tr>
@@ -142,6 +165,11 @@ export function ReposPage({ repos, runs }: { repos: RepoRow[]; runs: SyncRunRow[
                       status={run.status === "running" ? "syncing" : run.status === "success" ? "idle" : "error"}
                       error={run.error}
                     />
+                    {run.error ? (
+                      <div class="mt-0.5 max-w-md truncate text-xs text-ink-2" title={run.error}>
+                        {run.error}
+                      </div>
+                    ) : null}
                   </td>
                 </tr>
               ))

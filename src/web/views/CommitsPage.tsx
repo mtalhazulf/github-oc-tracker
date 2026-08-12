@@ -90,11 +90,13 @@ export function CommitsTable({
 }) {
   return (
     <div id="commits-table">
-      <p class="mb-2 text-xs text-ink-muted">{total.toLocaleString("en-US")} commits match</p>
-      <div class="overflow-x-auto rounded-lg border border-hairline bg-surface px-4 pb-2">
+      <p class="mb-2 text-xs text-ink-2" aria-live="polite">
+        {total.toLocaleString("en-US")} commits match
+      </p>
+      <div class="overflow-x-auto rounded-lg border border-hairline bg-surface px-4 pb-2" tabindex={0}>
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-xs text-ink-muted">
+            <tr class="text-left text-xs text-ink-2">
               <th class="py-2 pr-3 font-medium">SHA</th>
               <th class="py-2 pr-3 font-medium">Message</th>
               <th class="py-2 pr-3 font-medium">Repository</th>
@@ -105,7 +107,7 @@ export function CommitsTable({
           <tbody>
             {commits.length === 0 ? (
               <tr class="border-t border-hairline">
-                <td colspan={5} class="py-6 text-center text-ink-muted">
+                <td colspan={5} class="py-6 text-center text-ink-2">
                   No commits match these filters.
                 </td>
               </tr>
@@ -167,10 +169,11 @@ export function CommitsPage({
           <input type="checkbox" name="merges" value="1" checked={filters.merges} />
           Merges
         </label>
-        <button type="submit" class="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-white">
-          Filter
-        </button>
+        <a href="/commits" class="rounded-md border border-hairline px-3 py-1.5 text-sm text-ink-2 hover:text-ink">
+          Reset
+        </a>
       </form>
+      <p class="mb-3 -mt-2 text-xs text-ink-2">Filters apply automatically as you type.</p>
       <CommitsTable commits={commits} filters={filters} total={total} perPage={perPage} />
     </div>
   );

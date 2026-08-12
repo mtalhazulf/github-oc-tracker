@@ -218,9 +218,16 @@ export function createRoutes(store: Store, sync: SyncService, appSvc: GitHubAppS
 
   app.post("/orgs", async (c) => {
     const form = await c.req.parseBody();
-    const login = String(form.login ?? "").trim();
+    // Be liberal in what we accept: a login, "@login", or a pasted GitHub URL.
+    const login = String(form.login ?? "")
+      .trim()
+      .replace(/^https?:\/\/[^/]+\//i, "")
+      .replace(/^@/, "")
+      .replace(/[/?#].*$/, "");
     if (!login || !/^[a-zA-Z0-9-]+$/.test(login)) {
-      return c.html(<span>Enter a valid GitHub organization or user login.</span>);
+      return c.html(
+        <span>Enter a GitHub organization or user — a login like "vercel", or its GitHub URL.</span>,
+      );
     }
     try {
       await sync.addOrg(login);

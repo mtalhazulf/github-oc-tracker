@@ -77,3 +77,35 @@
     transform: rotate(360deg);
   }
 }
+
+/* Visible keyboard focus everywhere (WCAG 2.4.7). */
+:focus-visible {
+  outline: 2px solid var(--series-1);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Global request progress bar (Doherty threshold — immediate feedback). */
+#loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 0;
+  background: var(--series-1);
+  opacity: 0;
+  z-index: 50;
+  transition:
+    width 0.3s ease,
+    opacity 0.2s ease 0.1s;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .htmx-spin {
+    animation: none;
+  }
+  #loading-bar {
+    transition: none;
+  }
+}

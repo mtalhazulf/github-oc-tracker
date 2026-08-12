@@ -35,6 +35,11 @@ container via **Docker Compose**.
   works without the App: point a repo or org webhook at `/webhooks/github` with
   `WEBHOOK_SECRET`. All deliveries are HMAC-verified and logged on the Settings
   page.
+- **Accessible, responsive UI** — keyboard navigable with visible focus states and
+  a skip link, screen-reader summaries for every chart, WCAG-conscious text
+  contrast, reduced-motion support, first-run onboarding, a global request
+  progress indicator, and forgiving inputs (paste a GitHub URL anywhere a name is
+  asked).
 - **Enterprise ready**
   - GitHub Enterprise Server support via `GITHUB_API_URL`
   - Optional HTTP basic auth in front of the UI (`BASIC_AUTH_USER`/`PASS`)

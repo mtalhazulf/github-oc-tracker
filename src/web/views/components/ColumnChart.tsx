@@ -11,6 +11,7 @@ interface Props {
   height?: number;
   /** Render every nth x-axis label (1 = all). */
   labelEvery?: number;
+  ariaLabel?: string;
 }
 
 function niceCeil(n: number): number {
@@ -41,7 +42,7 @@ function barPath(x: number, yTop: number, w: number, h: number, baseline: number
  * One hue (--series-1), hairline gridlines, selective labeling: only the
  * peak value gets a direct label; every bar carries a native hover tooltip.
  */
-export function ColumnChart({ points, slot = 22, height = 170, labelEvery = 1 }: Props) {
+export function ColumnChart({ points, slot = 22, height = 170, labelEvery = 1, ariaLabel }: Props) {
   const padLeft = 34;
   const padRight = 6;
   const padTop = 16;
@@ -54,14 +55,21 @@ export function ColumnChart({ points, slot = 22, height = 170, labelEvery = 1 }:
   const barW = Math.min(24, Math.max(3, slot - 4));
   const peakIdx = rawMax > 0 ? points.findIndex((p) => p.value === rawMax) : -1;
   const gridYs = [0.5, 1].map((f) => baseline - plotH * f);
+  const peak = peakIdx >= 0 ? points[peakIdx] : undefined;
+  const summary =
+    rawMax === 0
+      ? "No commits in this period."
+      : `Peak: ${peak?.title ?? ""}. Total ${points.reduce((s, p) => s + p.value, 0).toLocaleString("en-US")} commits.`;
 
   return (
-    <div class="overflow-x-auto">
+    <div class="overflow-x-auto" tabindex={0} role="group" aria-label={ariaLabel ?? "Column chart"}>
+      <p class="sr-only">{summary}</p>
       <svg
         width={width}
         height={height}
         viewBox={`0 0 ${width} ${height}`}
         role="img"
+        aria-label={`${ariaLabel ?? "Column chart"}. ${summary}`}
         class="max-w-full"
         font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
       >

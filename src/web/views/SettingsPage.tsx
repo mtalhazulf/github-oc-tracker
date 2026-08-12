@@ -16,7 +16,7 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
   return (
     <section class="rounded-lg border border-hairline bg-surface p-4">
       <h2 class="text-sm font-semibold text-ink">{title}</h2>
-      {subtitle ? <p class="mb-3 mt-0.5 text-xs text-ink-muted">{subtitle}</p> : <div class="mb-3"></div>}
+      {subtitle ? <p class="mb-3 mt-0.5 text-xs text-ink-2">{subtitle}</p> : <div class="mb-3"></div>}
       {children}
     </section>
   );
@@ -102,7 +102,7 @@ export function SettingsPage({ d }: { d: SettingsData }) {
               ) : (
                 <table class="w-full text-sm">
                   <thead>
-                    <tr class="text-left text-xs text-ink-muted">
+                    <tr class="text-left text-xs text-ink-2">
                       <th class="py-1.5 pr-3 font-medium">Account</th>
                       <th class="py-1.5 pr-3 font-medium">Type</th>
                       <th class="py-1.5 pr-3 font-medium">Repositories</th>
@@ -198,7 +198,7 @@ export function SettingsPage({ d }: { d: SettingsData }) {
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
-                <tr class="text-left text-xs text-ink-muted">
+                <tr class="text-left text-xs text-ink-2">
                   <th class="py-1.5 pr-3 font-medium">Event</th>
                   <th class="py-1.5 pr-3 font-medium">Repository</th>
                   <th class="py-1.5 pr-3 font-medium">Result</th>
