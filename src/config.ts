@@ -27,8 +27,14 @@ export interface Config {
   port: number;
   host: string;
   dbPath: string;
+  /** External base URL of this deployment (needed for webhooks / GitHub App). */
+  baseUrl: string;
   githubToken: string | undefined;
   githubApiUrl: string;
+  /** GitHub web UI base, derived from the API URL unless overridden. */
+  githubWebUrl: string;
+  /** Secret for manually configured webhooks (repo/org → Settings → Webhooks). */
+  webhookSecret: string | undefined;
   syncIntervalMinutes: number;
   syncConcurrency: number;
   maxCommitsPerSync: number;
@@ -60,12 +66,22 @@ export function loadConfig(): Config {
     throw new Error("BASIC_AUTH_USER and BASIC_AUTH_PASS must be set together");
   }
 
+  const port = int("PORT", 3000, 1, 65535);
+  const githubApiUrl = str("GITHUB_API_URL", "https://api.github.com").replace(/\/+$/, "");
+  // api.github.com → github.com; GHE https://host/api/v3 → https://host
+  const derivedWebUrl = githubApiUrl === "https://api.github.com"
+    ? "https://github.com"
+    : githubApiUrl.replace(/\/api\/v3$/, "");
+
   return {
-    port: int("PORT", 3000, 1, 65535),
+    port,
     host: str("HOST", "0.0.0.0"),
     dbPath: str("DB_PATH", "./data/tracker.db"),
+    baseUrl: str("APP_BASE_URL", `http://localhost:${port}`).replace(/\/+$/, ""),
     githubToken: process.env.GITHUB_TOKEN || undefined,
-    githubApiUrl: str("GITHUB_API_URL", "https://api.github.com").replace(/\/+$/, ""),
+    githubApiUrl,
+    githubWebUrl: str("GITHUB_WEB_URL", derivedWebUrl).replace(/\/+$/, ""),
+    webhookSecret: process.env.WEBHOOK_SECRET || undefined,
     syncIntervalMinutes: int("SYNC_INTERVAL_MINUTES", 30, 0),
     syncConcurrency: int("SYNC_CONCURRENCY", 2, 1, 16),
     maxCommitsPerSync: int("MAX_COMMITS_PER_SYNC", 10000, 0),

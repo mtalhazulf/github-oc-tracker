@@ -5,10 +5,12 @@ import { serveStatic } from "hono/bun";
 import { config } from "./config.ts";
 import { log } from "./logger.ts";
 import type { Store } from "./db/store.ts";
+import type { GitHubAppService } from "./github/app.ts";
 import type { SyncService } from "./sync/service.ts";
 import { createRoutes } from "./web/routes.tsx";
+import { createWebhookRoutes } from "./web/webhooks.ts";
 
-export function buildApp(store: Store, sync: SyncService): Hono {
+export function buildApp(store: Store, sync: SyncService, appSvc: GitHubAppService): Hono {
   const app = new Hono();
 
   app.use("*", async (c, next) => {
@@ -57,6 +59,9 @@ export function buildApp(store: Store, sync: SyncService): Hono {
     );
   });
 
+  // Webhooks authenticate with HMAC signatures, not basic auth — mount first.
+  app.route("/", createWebhookRoutes(store, sync, appSvc));
+
   if (config.basicAuthUser && config.basicAuthPass) {
     app.use(
       "*",
@@ -68,7 +73,7 @@ export function buildApp(store: Store, sync: SyncService): Hono {
   app.use("/app.css", serveStatic({ path: "./public/app.css" }));
   app.use("/htmx.min.js", serveStatic({ path: "./public/htmx.min.js" }));
 
-  app.route("/", createRoutes(store, sync));
+  app.route("/", createRoutes(store, sync, appSvc));
 
   app.notFound((c) => c.text("Not found", 404));
   app.onError((err, c) => {

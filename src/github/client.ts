@@ -72,6 +72,8 @@ export interface GitHubCommit {
 interface ClientOptions {
   apiUrl?: string;
   token?: string;
+  /** Dynamic token source (e.g. GitHub App installation tokens). Wins over `token`. */
+  tokenProvider?: () => Promise<string | undefined>;
   /** Max seconds to sleep waiting for a rate-limit window before giving up. */
   maxRateLimitWaitSeconds?: number;
   fetchFn?: typeof fetch;
@@ -88,18 +90,20 @@ function toEpoch(iso: string | undefined | null): number | null {
 export class GitHubClient {
   private readonly apiUrl: string;
   private readonly token: string | undefined;
+  private readonly tokenProvider: (() => Promise<string | undefined>) | undefined;
   private readonly maxWait: number;
   private readonly fetchFn: typeof fetch;
 
   constructor(opts: ClientOptions = {}) {
     this.apiUrl = (opts.apiUrl ?? config.githubApiUrl).replace(/\/+$/, "");
     this.token = opts.token ?? config.githubToken;
+    this.tokenProvider = opts.tokenProvider;
     this.maxWait = opts.maxRateLimitWaitSeconds ?? 120;
     this.fetchFn = opts.fetchFn ?? fetch;
   }
 
   get authenticated(): boolean {
-    return this.token !== undefined;
+    return this.token !== undefined || this.tokenProvider !== undefined;
   }
 
   private async request(path: string, searchParams?: Record<string, string>): Promise<Response> {
@@ -112,7 +116,8 @@ export class GitHubClient {
       "X-GitHub-Api-Version": "2022-11-28",
       "User-Agent": "github-oc-tracker",
     };
-    if (this.token) headers.Authorization = `Bearer ${this.token}`;
+    const token = this.tokenProvider ? await this.tokenProvider() : this.token;
+    if (token) headers.Authorization = `Bearer ${token}`;
 
     let attempt = 0;
     // Up to 3 retries for transient failures, plus at most one rate-limit wait.
@@ -160,6 +165,11 @@ export class GitHubClient {
 
       return res;
     }
+  }
+
+  /** Authenticated GET returning parsed JSON (public for app-level endpoints). */
+  async json<T>(path: string, searchParams?: Record<string, string>): Promise<T> {
+    return this.getJson<T>(path, searchParams);
   }
 
   private async getJson<T>(path: string, searchParams?: Record<string, string>): Promise<T> {
@@ -219,6 +229,22 @@ export class GitHubClient {
       if (raw.length === 0) return;
       yield raw.map(mapRepo);
       if (raw.length < 100) return;
+      page += 1;
+    }
+  }
+
+  /** List repositories granted to the current installation token, paginated. */
+  async *listInstallationRepos(): AsyncGenerator<GitHubRepo[]> {
+    let page = 1;
+    for (;;) {
+      const raw = await this.getJson<{ repositories?: Record<string, unknown>[] }>(
+        "/installation/repositories",
+        { per_page: "100", page: String(page) },
+      );
+      const repos = raw.repositories ?? [];
+      if (repos.length === 0) return;
+      yield repos.map(mapRepo);
+      if (repos.length < 100) return;
       page += 1;
     }
   }

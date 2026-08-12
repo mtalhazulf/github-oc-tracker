@@ -11,6 +11,7 @@ export interface OrgRow {
   last_synced_at: number | null;
   sync_status: "idle" | "syncing" | "error";
   sync_error: string | null;
+  installation_id: number | null;
   repo_count: number;
   commit_count: number;
 }
@@ -33,8 +34,43 @@ export interface RepoRow {
   sync_status: "pending" | "syncing" | "idle" | "error";
   sync_error: string | null;
   tracked: number;
+  installation_id: number | null;
   org_login: string | null;
   commit_count: number;
+}
+
+export interface GithubAppRow {
+  id: number;
+  app_id: number;
+  slug: string;
+  name: string;
+  client_id: string | null;
+  client_secret: string | null;
+  private_key: string;
+  webhook_secret: string;
+  html_url: string;
+  created_at: number;
+}
+
+export interface InstallationRow {
+  id: number;
+  account_login: string;
+  account_type: string;
+  suspended: number;
+  created_at: number;
+  last_event_at: number | null;
+  repo_count: number;
+}
+
+export interface WebhookEventRow {
+  id: number;
+  delivery_id: string | null;
+  event: string;
+  action: string | null;
+  repo_full_name: string | null;
+  status: string;
+  note: string | null;
+  received_at: number;
 }
 
 export interface CommitRow {
@@ -82,6 +118,7 @@ export interface NewRepo {
   isFork: boolean;
   isArchived: boolean;
   htmlUrl: string | null;
+  installationId?: number | null;
 }
 
 export interface CommitFilters {
@@ -217,31 +254,43 @@ export function createStore(db: Database) {
     // ---- repositories ----
 
     upsertRepo(r: NewRepo): { id: number; inserted: boolean } {
-      const existing = db
-        .query("SELECT id FROM repositories WHERE full_name = ?")
-        .get(r.fullName) as { id: number } | undefined;
+      // Match by immutable GitHub id first so renames/transfers update in place.
+      const existing = (r.githubId !== null
+        ? (db
+            .query("SELECT id FROM repositories WHERE github_id = ?")
+            .get(r.githubId) as { id: number } | undefined)
+        : undefined) ??
+        (db
+          .query("SELECT id FROM repositories WHERE full_name = ?")
+          .get(r.fullName) as { id: number } | undefined);
       if (existing) {
         db.query(
           `UPDATE repositories SET github_id = COALESCE(?, github_id), org_id = COALESCE(?, org_id),
-             description = ?, default_branch = ?, private = ?, fork = ?, archived = ?, html_url = ?
+             owner = ?, name = ?, full_name = ?,
+             description = ?, default_branch = ?, private = ?, fork = ?, archived = ?, html_url = ?,
+             installation_id = COALESCE(?, installation_id)
            WHERE id = ?`,
         ).run(
           r.githubId,
           r.orgId,
+          r.owner,
+          r.name,
+          r.fullName,
           r.description,
           r.defaultBranch,
           r.isPrivate ? 1 : 0,
           r.isFork ? 1 : 0,
           r.isArchived ? 1 : 0,
           r.htmlUrl,
+          r.installationId ?? null,
           existing.id,
         );
         return { id: existing.id, inserted: false };
       }
       const res = db
         .query(
-          `INSERT INTO repositories (github_id, org_id, owner, name, full_name, description, default_branch, private, fork, archived, html_url)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO repositories (github_id, org_id, owner, name, full_name, description, default_branch, private, fork, archived, html_url, installation_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           r.githubId,
@@ -255,8 +304,17 @@ export function createStore(db: Database) {
           r.isFork ? 1 : 0,
           r.isArchived ? 1 : 0,
           r.htmlUrl,
+          r.installationId ?? null,
         );
       return { id: Number(res.lastInsertRowid), inserted: true };
+    },
+
+    getRepoByGithubId(githubId: number): RepoRow | null {
+      return (db
+        .query(
+          `SELECT r.*, NULL AS org_login, 0 AS commit_count FROM repositories r WHERE r.github_id = ?`,
+        )
+        .get(githubId) as RepoRow | undefined) ?? null;
     },
 
     getRepo(id: number): RepoRow | null {
@@ -481,6 +539,131 @@ export function createStore(db: Database) {
         n: number;
         last_ts: number;
       }[];
+    },
+
+    // ---- github app / installations / webhooks ----
+
+    getGithubApp(): GithubAppRow | null {
+      return (db.query("SELECT * FROM github_app WHERE id = 1").get() as GithubAppRow | undefined) ?? null;
+    },
+
+    saveGithubApp(a: {
+      appId: number;
+      slug: string;
+      name: string;
+      clientId: string | null;
+      clientSecret: string | null;
+      privateKey: string;
+      webhookSecret: string;
+      htmlUrl: string;
+    }): void {
+      db.query(
+        `INSERT INTO github_app (id, app_id, slug, name, client_id, client_secret, private_key, webhook_secret, html_url)
+         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET app_id = excluded.app_id, slug = excluded.slug, name = excluded.name,
+           client_id = excluded.client_id, client_secret = excluded.client_secret,
+           private_key = excluded.private_key, webhook_secret = excluded.webhook_secret, html_url = excluded.html_url`,
+      ).run(a.appId, a.slug, a.name, a.clientId, a.clientSecret, a.privateKey, a.webhookSecret, a.htmlUrl);
+    },
+
+    deleteGithubApp(): void {
+      db.query("DELETE FROM github_app WHERE id = 1").run();
+    },
+
+    upsertInstallation(i: { id: number; accountLogin: string; accountType: string }): void {
+      db.query(
+        `INSERT INTO installations (id, account_login, account_type, last_event_at)
+         VALUES (?, ?, ?, unixepoch())
+         ON CONFLICT(id) DO UPDATE SET account_login = excluded.account_login,
+           account_type = excluded.account_type, suspended = 0, last_event_at = unixepoch()`,
+      ).run(i.id, i.accountLogin, i.accountType);
+    },
+
+    getInstallation(id: number): InstallationRow | null {
+      return (db
+        .query(
+          `SELECT i.*, (SELECT COUNT(*) FROM repositories r WHERE r.installation_id = i.id) AS repo_count
+           FROM installations i WHERE i.id = ?`,
+        )
+        .get(id) as InstallationRow | undefined) ?? null;
+    },
+
+    findInstallationByLogin(login: string): InstallationRow | null {
+      return (db
+        .query(
+          `SELECT i.*, 0 AS repo_count FROM installations i WHERE i.account_login = ? COLLATE NOCASE`,
+        )
+        .get(login) as InstallationRow | undefined) ?? null;
+    },
+
+    listInstallations(): InstallationRow[] {
+      return db
+        .query(
+          `SELECT i.*, (SELECT COUNT(*) FROM repositories r WHERE r.installation_id = i.id) AS repo_count
+           FROM installations i ORDER BY i.account_login`,
+        )
+        .all() as InstallationRow[];
+    },
+
+    setInstallationSuspended(id: number, suspended: boolean): void {
+      db.query("UPDATE installations SET suspended = ?, last_event_at = unixepoch() WHERE id = ?").run(
+        suspended ? 1 : 0,
+        id,
+      );
+    },
+
+    touchInstallation(id: number): void {
+      db.query("UPDATE installations SET last_event_at = unixepoch() WHERE id = ?").run(id);
+    },
+
+    /** Installation uninstalled: keep tracked history, but detach and flag repos. */
+    removeInstallation(id: number): void {
+      const detach = db.transaction(() => {
+        db.query(
+          `UPDATE repositories SET installation_id = NULL, sync_status = 'error',
+             sync_error = 'GitHub App installation was removed'
+           WHERE installation_id = ?`,
+        ).run(id);
+        db.query("UPDATE organizations SET installation_id = NULL WHERE installation_id = ?").run(id);
+        db.query("DELETE FROM installations WHERE id = ?").run(id);
+      });
+      detach();
+    },
+
+    detachRepoFromInstallation(githubId: number): void {
+      db.query(
+        `UPDATE repositories SET installation_id = NULL, sync_status = 'error',
+           sync_error = 'Repository was removed from the GitHub App installation'
+         WHERE github_id = ?`,
+      ).run(githubId);
+    },
+
+    setOrgInstallation(orgId: number, installationId: number | null): void {
+      db.query("UPDATE organizations SET installation_id = ? WHERE id = ?").run(installationId, orgId);
+    },
+
+    insertWebhookEvent(e: {
+      deliveryId: string | null;
+      event: string;
+      action: string | null;
+      repoFullName: string | null;
+      status: string;
+      note: string | null;
+    }): void {
+      db.query(
+        `INSERT INTO webhook_events (delivery_id, event, action, repo_full_name, status, note)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run(e.deliveryId, e.event, e.action, e.repoFullName, e.status, e.note);
+      // Keep the log bounded.
+      db.query(
+        `DELETE FROM webhook_events WHERE id NOT IN (SELECT id FROM webhook_events ORDER BY id DESC LIMIT 500)`,
+      ).run();
+    },
+
+    recentWebhookEvents(limit = 20): WebhookEventRow[] {
+      return db
+        .query("SELECT * FROM webhook_events ORDER BY id DESC LIMIT ?")
+        .all(limit) as WebhookEventRow[];
     },
 
     // ---- sync runs ----

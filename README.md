@@ -23,6 +23,18 @@ container via **Docker Compose**.
 - **Incremental sync** — first sync backfills history; subsequent syncs fetch only
   new commits (with an overlap window and SHA-level dedupe). Manual "Sync now" per
   repo/org, plus a background scheduler.
+- **Installable GitHub App (Dokploy-style)** — one click on the Settings page
+  creates a private GitHub App via GitHub's app-manifest flow (read-only
+  `contents`/`metadata`, webhook pre-wired). Install it on any organization or
+  personal account — all repositories or a hand-picked selection — and tracking
+  starts automatically, authenticated with per-installation tokens instead of a
+  personal token. Multiple installations across different orgs work side by side.
+- **Real-time webhooks** — pushes trigger an immediate incremental sync, renames
+  and transfers are tracked, repos added to (or removed from) an installation are
+  picked up live, and new repos in a tracked org start syncing on creation. Also
+  works without the App: point a repo or org webhook at `/webhooks/github` with
+  `WEBHOOK_SECRET`. All deliveries are HMAC-verified and logged on the Settings
+  page.
 - **Enterprise ready**
   - GitHub Enterprise Server support via `GITHUB_API_URL`
   - Optional HTTP basic auth in front of the UI (`BASIC_AUTH_USER`/`PASS`)
@@ -47,6 +59,30 @@ Add an organization on the **Organizations** page or a single `owner/repo` on th
 Commit data persists in the `tracker-data` volume; `docker compose down` and
 rebuilds won't lose history.
 
+## GitHub App setup (recommended)
+
+1. Set `APP_BASE_URL` to your public URL (GitHub must be able to reach
+   `${APP_BASE_URL}/webhooks/github`).
+2. Open **Settings → GitHub App**, optionally enter an organization to own the
+   app, and click **Create GitHub App**. You'll confirm on GitHub and land back
+   here — credentials (app id, private key, webhook secret) are stored
+   automatically via the app-manifest conversion API.
+3. Click **Install on an organization or account**, pick the account and either
+   *All repositories* or a selection. Discovery and backfill start immediately;
+   webhooks keep everything current from then on.
+
+Repeat step 3 for as many organizations or personal accounts as you like — each
+installation authenticates independently. Removing an installation on GitHub
+stops syncing but keeps the tracked history.
+
+### Manual webhooks (without the App)
+
+Using only a PAT? You can still get real-time updates: on any repository or
+organization, add a webhook with payload URL `${APP_BASE_URL}/webhooks/github`,
+content type `application/json`, secret equal to your `WEBHOOK_SECRET`, and the
+**push** + **repository** events. Deliveries are rejected unless the HMAC
+signature matches.
+
 ## Local development
 
 ```sh
@@ -63,8 +99,11 @@ All configuration is via environment variables (see `.env.example`):
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `GITHUB_TOKEN` | — | PAT for the GitHub API. Without it: 60 req/h, public repos only. Fine-grained: *Contents: read, Metadata: read*; classic: `repo`, `read:org`. |
+| `GITHUB_TOKEN` | — | PAT for the GitHub API (optional when using the GitHub App). Fine-grained: *Contents: read, Metadata: read*; classic: `repo`, `read:org`. |
 | `GITHUB_API_URL` | `https://api.github.com` | Point at `https://<ghe-host>/api/v3` for GitHub Enterprise Server. |
+| `GITHUB_WEB_URL` | derived | GitHub web UI base (auto-derived from the API URL). |
+| `APP_BASE_URL` | `http://localhost:3000` | Public URL of this deployment; required for webhooks and the GitHub App. |
+| `WEBHOOK_SECRET` | — | Secret for manually configured webhooks. The GitHub App provisions its own. |
 | `PORT` / `HOST` | `3000` / `0.0.0.0` | Listen address. |
 | `DB_PATH` | `./data/tracker.db` | SQLite file (`/data/tracker.db` in the container). |
 | `SYNC_INTERVAL_MINUTES` | `30` | Background sync cadence; `0` disables. |
@@ -79,13 +118,14 @@ All configuration is via environment variables (see `.env.example`):
 ## Architecture
 
 ```
-Browser (HTMX + Tailwind, server-rendered JSX)
-   │
-Hono on Bun ── routes: / (dashboard) /commits /repos /orgs /healthz
-   │
+Browser (HTMX + Tailwind, server-rendered JSX)        GitHub (push/repo/installation webhooks)
+   │                                                     │ HMAC-verified
+Hono on Bun ── / /commits /repos /orgs /settings ── /webhooks/github ── /healthz
+   │                                                     │
 SyncService ── bounded worker queue, incremental per-repo sync
    │                │
-SQLite (WAL) ◄──────┘   GitHub REST API (pagination, rate-limit handling)
+SQLite (WAL) ◄──────┘   GitHub REST API — PAT or GitHub App installation tokens
+                        (RS256 app JWT → cached per-installation access tokens)
 ```
 
 - **Sync model**: each repo stores its latest committer timestamp; syncs request
@@ -95,7 +135,13 @@ SQLite (WAL) ◄──────┘   GitHub REST API (pagination, rate-limit 
   hour/weekday analytics use a configurable fixed offset (`TZ_OFFSET_MINUTES`)
   applied at query time in SQL.
 - **Scope**: commits are tracked on each repository's default branch (the GitHub
-  commits API default).
+  commits API default). Pushes to other branches are received and logged but
+  skipped.
+- **GitHub App auth**: the app's private key signs a short-lived RS256 JWT, which
+  mints per-installation access tokens (cached, auto-refreshed). Repositories
+  remember which installation grants access; everything else falls back to the
+  PAT. App credentials live in the `github_app` table inside the SQLite volume —
+  protect backups accordingly.
 
 ## Operations
 

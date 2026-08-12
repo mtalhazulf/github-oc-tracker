@@ -2,7 +2,7 @@ import type { Child } from "hono/jsx";
 
 interface Props {
   title: string;
-  active: "dashboard" | "commits" | "repos" | "orgs";
+  active: "dashboard" | "commits" | "repos" | "orgs" | "settings";
   children: Child;
 }
 
@@ -11,6 +11,7 @@ const NAV = [
   { key: "commits", href: "/commits", label: "Commits" },
   { key: "repos", href: "/repos", label: "Repositories" },
   { key: "orgs", href: "/orgs", label: "Organizations" },
+  { key: "settings", href: "/settings", label: "Settings" },
 ] as const;
 
 export function Layout({ title, active, children }: Props) {

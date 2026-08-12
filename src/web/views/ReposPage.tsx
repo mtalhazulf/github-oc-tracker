@@ -24,6 +24,11 @@ export function RepoRowView({ repo }: { repo: RepoRow }) {
           {repo.private ? <span class="rounded bg-plane px-1.5 py-0.5">private</span> : null}
           {repo.fork ? <span class="rounded bg-plane px-1.5 py-0.5">fork</span> : null}
           {repo.archived ? <span class="rounded bg-plane px-1.5 py-0.5">archived</span> : null}
+          {repo.installation_id !== null ? (
+            <span class="rounded bg-plane px-1.5 py-0.5" title="Access via GitHub App installation">
+              app
+            </span>
+          ) : null}
         </span>
       </td>
       <td class="whitespace-nowrap py-2 pr-3 text-ink-2">{repo.org_login ?? "—"}</td>

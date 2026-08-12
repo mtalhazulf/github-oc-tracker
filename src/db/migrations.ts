@@ -76,4 +76,48 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_sync_runs_repo ON sync_runs(repo_id, started_at DESC);
     `,
   },
+  {
+    version: 2,
+    name: "github app, installations, webhooks",
+    sql: `
+      ALTER TABLE repositories ADD COLUMN installation_id INTEGER;
+      ALTER TABLE organizations ADD COLUMN installation_id INTEGER;
+
+      -- Single-row table holding this deployment's GitHub App credentials
+      -- (created via the app-manifest flow, Dokploy-style).
+      CREATE TABLE github_app (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        app_id INTEGER NOT NULL,
+        slug TEXT NOT NULL,
+        name TEXT NOT NULL,
+        client_id TEXT,
+        client_secret TEXT,
+        private_key TEXT NOT NULL,
+        webhook_secret TEXT NOT NULL,
+        html_url TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      );
+
+      CREATE TABLE installations (
+        id INTEGER PRIMARY KEY,
+        account_login TEXT NOT NULL,
+        account_type TEXT NOT NULL DEFAULT 'Organization',
+        suspended INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        last_event_at INTEGER
+      );
+
+      CREATE TABLE webhook_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        delivery_id TEXT,
+        event TEXT NOT NULL,
+        action TEXT,
+        repo_full_name TEXT,
+        status TEXT NOT NULL,
+        note TEXT,
+        received_at INTEGER NOT NULL DEFAULT (unixepoch())
+      );
+      CREATE INDEX idx_webhook_events_received ON webhook_events(received_at DESC);
+    `,
+  },
 ];

@@ -27,6 +27,14 @@ export function OrgRowView({ org }: { org: OrgRow }) {
           <span class="rounded bg-plane px-1.5 py-0.5 text-[10px] text-ink-muted">
             {org.kind === "org" ? "organization" : "user"}
           </span>
+          {org.installation_id !== null ? (
+            <span
+              class="rounded bg-plane px-1.5 py-0.5 text-[10px] text-ink-muted"
+              title="Access via GitHub App installation"
+            >
+              app
+            </span>
+          ) : null}
         </span>
       </td>
       <td class="whitespace-nowrap py-2 pr-3 tabular-nums text-ink-2">{org.repo_count}</td>

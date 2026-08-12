@@ -1,8 +1,11 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
+import { randomBytes } from "node:crypto";
+import { config } from "../config.ts";
 import { log } from "../logger.ts";
 import type { CommitFilters, Store } from "../db/store.ts";
 import { GitHubError, NotFoundError, RateLimitError } from "../github/client.ts";
+import type { GitHubAppService } from "../github/app.ts";
 import type { SyncService } from "../sync/service.ts";
 import { tzOffsetSeconds } from "./format.ts";
 import { Layout } from "./views/Layout.tsx";
@@ -10,6 +13,7 @@ import { DashboardContent, DashboardPage, type DashboardData } from "./views/Das
 import { CommitRows, CommitsPage, CommitsTable, type CommitsQuery } from "./views/CommitsPage.tsx";
 import { RepoRowView, ReposPage } from "./views/ReposPage.tsx";
 import { OrgRowView, OrgsPage } from "./views/OrgsPage.tsx";
+import { ManifestForm, SettingsPage, type SettingsData } from "./views/SettingsPage.tsx";
 
 const PER_PAGE = 50;
 
@@ -41,8 +45,15 @@ function parseScope(scope: string): { filters: CommitFilters; orgId?: number; re
   return { filters: { repoId: id }, repoId: id };
 }
 
-export function createRoutes(store: Store, sync: SyncService): Hono {
+export function createRoutes(store: Store, sync: SyncService, appSvc: GitHubAppService): Hono {
   const app = new Hono();
+
+  // One-time state tokens for the GitHub App manifest hand-off (15 min TTL).
+  const manifestStates = new Map<string, number>();
+  const pruneStates = () => {
+    const now = Date.now();
+    for (const [k, exp] of manifestStates) if (exp < now) manifestStates.delete(k);
+  };
 
   // ---- dashboard ----
 
@@ -244,6 +255,68 @@ export function createRoutes(store: Store, sync: SyncService): Hono {
   app.delete("/orgs/:id", (c) => {
     store.deleteOrg(Number(c.req.param("id")));
     return c.body(null, 200);
+  });
+
+  // ---- settings / github app ----
+
+  app.get("/settings", (c) => {
+    const d: SettingsData = {
+      app: appSvc.app,
+      installations: store.listInstallations(),
+      events: store.recentWebhookEvents(20),
+      webhookUrl: `${config.baseUrl}/webhooks/github`,
+      baseUrl: config.baseUrl,
+      baseUrlIsLocal: /localhost|127\.0\.0\.1/.test(config.baseUrl),
+      manualSecretSet: config.webhookSecret !== undefined,
+      patSet: config.githubToken !== undefined,
+    };
+    return page(
+      c,
+      <Layout title="Settings" active="settings">
+        <SettingsPage d={d} />
+      </Layout>,
+    );
+  });
+
+  app.get("/settings/github-app/new", (c) => {
+    pruneStates();
+    const org = (c.req.query("org") ?? "").trim();
+    const state = randomBytes(16).toString("hex");
+    manifestStates.set(state, Date.now() + 15 * 60_000);
+    return partial(
+      c,
+      <ManifestForm
+        targetUrl={appSvc.manifestTargetUrl(org || undefined, state)}
+        manifestJson={JSON.stringify(appSvc.buildManifest())}
+        org={org}
+      />,
+    );
+  });
+
+  app.get("/settings/github-app/callback", async (c) => {
+    pruneStates();
+    const code = c.req.query("code");
+    const state = c.req.query("state");
+    if (!state || !manifestStates.delete(state)) {
+      return c.text("Invalid or expired state — restart app creation from Settings.", 400);
+    }
+    if (!code) return c.text("Missing code parameter.", 400);
+    try {
+      await appSvc.convertManifestCode(code);
+      return c.redirect("/settings");
+    } catch (err) {
+      log.error("manifest conversion failed", { err: String(err) });
+      return c.text(`GitHub App creation failed: ${friendlyError(err)}`, 502);
+    }
+  });
+
+  app.delete("/settings/github-app", (c) => {
+    for (const inst of store.listInstallations()) {
+      store.removeInstallation(inst.id);
+    }
+    appSvc.forget();
+    c.header("HX-Redirect", "/settings");
+    return c.text("ok");
   });
 
   return app;
