@@ -7,8 +7,8 @@ import { config } from "../../config.ts";
 import type { AuthService } from "../../services/auth.ts";
 import { fiscalYearFor, type PayrollService } from "../../services/payroll.ts";
 import { currentPrincipal } from "../request-context.ts";
+import { can } from "../../domain/rbac.ts";
 import { friendlyError, page } from "../http.tsx";
-import { requireCapability } from "../middleware/auth.ts";
 import { Layout } from "../views/Layout.tsx";
 import {
   CycleDetailPage,
@@ -20,12 +20,6 @@ import {
 
 export function createPayrollRoutes(store: Store, payroll: PayrollService, auth: AuthService): Hono {
   const app = new Hono();
-
-  // Everything under payroll requires the money capability. The own-payslip
-  // carve-out is handled explicitly on the payslip route below.
-  app.use("/payroll/*", requireCapability("payroll.manage"));
-  app.use("/settings/tax-slabs/*", requireCapability("payroll.manage"));
-  app.use("/settings/tax-slabs", requireCapability("payroll.manage"));
 
   function listPage(c: Context, message?: string) {
     const settings = store.getSettings();
@@ -132,11 +126,16 @@ export function createPayrollRoutes(store: Store, payroll: PayrollService, auth:
 
   // ---- payslips ----
 
-  /** Anyone may read their OWN payslip; everything else needs the money capability. */
-  function canRead(c: Context, employeeId: number): boolean {
+  /**
+   * Per-record rule the policy cannot express: the policy lets any signed-in
+   * user reach a payslip URL, and this decides whether it is *theirs*. Anyone
+   * holding compensation.view sees every payslip; everyone else sees only the
+   * one attached to their linked employee record.
+   */
+  function canRead(_c: Context, employeeId: number): boolean {
     const principal = currentPrincipal();
     if (!principal) return false;
-    if (principal.role === "owner" || principal.role === "admin") return true;
+    if (can(principal.role, "compensation.view")) return true;
     return principal.employeeId !== null && principal.employeeId === employeeId;
   }
 
@@ -168,7 +167,7 @@ export function createPayrollRoutes(store: Store, payroll: PayrollService, auth:
     );
   });
 
-  app.post("/payslips/:id", requireCapability("payroll.manage"), async (c) => {
+  app.post("/payslips/:id", async (c) => {
     const id = Number(c.req.param("id"));
     const payslip = store.getPayslip(id);
     if (!payslip) return c.notFound();
@@ -187,7 +186,7 @@ export function createPayrollRoutes(store: Store, payroll: PayrollService, auth:
     }
   });
 
-  app.post("/payslips/:id/items", requireCapability("payroll.manage"), async (c) => {
+  app.post("/payslips/:id/items", async (c) => {
     const id = Number(c.req.param("id"));
     const payslip = store.getPayslip(id);
     if (!payslip) return c.notFound();

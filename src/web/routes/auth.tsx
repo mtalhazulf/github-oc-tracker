@@ -7,10 +7,11 @@ import {
   SESSION_MAX_AGE,
   type AuthService,
 } from "../../services/auth.ts";
-import { cookieOptions, principalOf, requireCapability } from "../middleware/auth.ts";
+import { cookieOptions, principalOf } from "../middleware/auth.ts";
 import { friendlyError, page, partial } from "../http.tsx";
 import { Layout } from "../views/Layout.tsx";
 import { AuditPage, LoginPage, SetupPage, UsersPage } from "../views/AuthPages.tsx";
+import { RolesPage } from "../views/RolesPage.tsx";
 
 function safeNext(raw: string | undefined): string {
   // Only same-origin absolute paths — never an attacker-supplied host.
@@ -99,9 +100,9 @@ export function createAuthRoutes(store: Store, auth: AuthService): Hono {
     );
   }
 
-  app.get("/settings/users", requireCapability("users.manage"), (c) => usersPage(c));
+  app.get("/settings/users", (c) => usersPage(c));
 
-  app.post("/settings/users", requireCapability("users.manage"), async (c) => {
+  app.post("/settings/users", async (c) => {
     const body = (await c.req.parseBody()) as Record<string, unknown>;
     try {
       const created = await auth.createUser(body);
@@ -116,7 +117,7 @@ export function createAuthRoutes(store: Store, auth: AuthService): Hono {
     }
   });
 
-  app.post("/settings/users/:id", requireCapability("users.manage"), async (c) => {
+  app.post("/settings/users/:id", async (c) => {
     const id = Number(c.req.param("id"));
     const body = (await c.req.parseBody()) as Record<string, unknown>;
     const actor = principalOf(c);
@@ -130,7 +131,7 @@ export function createAuthRoutes(store: Store, auth: AuthService): Hono {
     }
   });
 
-  app.delete("/settings/users/:id", requireCapability("users.manage"), (c) => {
+  app.delete("/settings/users/:id", (c) => {
     const actor = principalOf(c);
     if (!actor) return c.text("Sign in to continue.", 403);
     const id = Number(c.req.param("id"));
@@ -143,9 +144,20 @@ export function createAuthRoutes(store: Store, auth: AuthService): Hono {
     }
   });
 
+  // ---- roles reference (readable by anyone signed in) ----
+
+  app.get("/settings/roles", (c) =>
+    page(
+      c,
+      <Layout title="Roles" active="settings">
+        <RolesPage current={principalOf(c)?.role ?? "member"} />
+      </Layout>,
+    ),
+  );
+
   // ---- audit ----
 
-  app.get("/settings/audit", requireCapability("settings.manage"), (c) => {
+  app.get("/settings/audit", (c) => {
     const entity = c.req.query("entity") ?? "";
     return page(
       c,

@@ -163,6 +163,10 @@ export function Sidebar({
                 Audit log
               </a>
             ) : null}
+            <a href="/settings/roles" class={IDLE}>
+              <Icon name="settings" class="h-4 w-4 shrink-0 text-ink-muted" />
+              Roles
+            </a>
             <a href="/logout" class={IDLE}>
               <Icon name="close" class="h-4 w-4 shrink-0 text-ink-muted" />
               Sign out

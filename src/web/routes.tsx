@@ -20,7 +20,6 @@ import { createEconomicsService } from "../services/economics.ts";
 import { createEconomicsRoutes } from "./routes/economics.tsx";
 import { createTokenRoutes } from "./routes/tokens.tsx";
 import type { AuthService } from "../services/auth.ts";
-import { requireCapability } from "./middleware/auth.ts";
 import { Layout } from "./views/Layout.tsx";
 import { DashboardContent, DashboardPage, type DashboardData } from "./views/DashboardPage.tsx";
 import { CommitRows, CommitsPage, CommitsTable, type CommitsQuery } from "./views/CommitsPage.tsx";
@@ -335,11 +334,6 @@ export function createRoutes(
   });
 
   // ---- feature modules ----
-
-  app.use("/employees/*", requireCapability("people.view"));
-  app.use("/people/*", requireCapability("people.manage"));
-  app.use("/clients/*", requireCapability("delivery.view"));
-  app.use("/projects/*", requireCapability("delivery.view"));
 
   app.route("/", createPeopleRoutes(store, createEmployeeService(store), createIdentityService(store), auth));
   app.route("/", createDeliveryRoutes(store, createDeliveryService(store), sync, auth));

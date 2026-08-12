@@ -5,14 +5,11 @@ import type { Store } from "../../db/store.ts";
 import type { AuthService } from "../../services/auth.ts";
 import { currentPrincipal } from "../request-context.ts";
 import { page } from "../http.tsx";
-import { requireCapability } from "../middleware/auth.ts";
 import { Layout } from "../views/Layout.tsx";
 import { TokensPage } from "../views/TokensPage.tsx";
 
 export function createTokenRoutes(store: Store, auth: AuthService): Hono {
   const app = new Hono();
-  app.use("/settings/tokens", requireCapability("settings.manage"));
-  app.use("/settings/tokens/*", requireCapability("settings.manage"));
 
   function render(c: Context, created?: string) {
     return page(

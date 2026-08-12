@@ -17,6 +17,7 @@ import {
   btn,
   inputCls,
 } from "./ui/kit.tsx";
+import { Can } from "./ui/gate.tsx";
 
 const EMPLOYMENT_LABELS: Record<string, string> = {
   full_time: "Full time",
@@ -54,14 +55,18 @@ export function EmployeesPage({
         subtitle={`${employees.length} ${employees.length === 1 ? "person" : "people"}`}
         actions={
           <>
-            {unmappedCount > 0 ? (
-              <a href="/people/unmapped" class={btn.secondary}>
-                {unmappedCount} unmapped {unmappedCount === 1 ? "author" : "authors"}
+            <Can do="people.manage">
+              {unmappedCount > 0 ? (
+                <a href="/people/unmapped" class={btn.secondary}>
+                  {unmappedCount} unmapped {unmappedCount === 1 ? "author" : "authors"}
+                </a>
+              ) : null}
+            </Can>
+            <Can do="people.manage">
+              <a href="/employees/new" class={btn.primary}>
+                Add person
               </a>
-            ) : null}
-            <a href="/employees/new" class={btn.primary}>
-              Add person
-            </a>
+            </Can>
           </>
         }
       />
@@ -120,9 +125,11 @@ export function EmployeesTable({ employees }: { employees: EmployeeRow[] }) {
           title="No people yet"
           body="Add your team so commits can be attributed to real people, and payroll has someone to pay."
           action={
-            <a href="/employees/new" class={btn.primary}>
-              Add the first person
-            </a>
+            <Can do="people.manage">
+              <a href="/employees/new" class={btn.primary}>
+                Add the first person
+              </a>
+            </Can>
           }
         />
       </div>
@@ -155,9 +162,11 @@ export function EmployeesTable({ employees }: { employees: EmployeeRow[] }) {
               <Badge label={statusLabel(e.status)} tone={STATUS_TONES[e.status] ?? "neutral"} />
             </td>
             <td class="whitespace-nowrap py-2 text-right">
-              <a href={`/employees/${e.id}/edit`} class={btn.small}>
-                Edit
-              </a>
+              <Can do="people.manage">
+                <a href={`/employees/${e.id}/edit`} class={btn.small}>
+                  Edit
+                </a>
+              </Can>
             </td>
           </tr>
         ))}
@@ -346,7 +355,7 @@ export function EmployeeDetailPage({
         title={employee.full_name}
         subtitle={[employee.designation, employee.department].filter(Boolean).join(" · ") || employee.code}
         actions={
-          <>
+          <Can do="people.manage">
             <a href={`/employees/${employee.id}/edit`} class={btn.secondary}>
               Edit
             </a>
@@ -363,7 +372,7 @@ export function EmployeeDetailPage({
                 Restore
               </button>
             )}
-          </>
+          </Can>
         }
       />
 

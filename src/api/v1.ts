@@ -3,8 +3,8 @@ import type { Context } from "hono";
 import { createHash, randomBytes } from "node:crypto";
 import type { Store } from "../db/store.ts";
 import { AppError } from "../domain/errors.ts";
-import { can, type Capability, type Role } from "../domain/rbac.ts";
-import { currentPrincipal } from "../web/request-context.ts";
+import type { Role } from "../domain/rbac.ts";
+import { setPrincipal } from "../web/request-context.ts";
 
 /**
  * A deliberately small JSON surface: read-mostly, for the owner's own scripts
@@ -39,42 +39,45 @@ function fail(c: Context, status: number, code: string, message: string, fields?
   return c.json({ error: { code, message, ...(fields ? { fields } : {}) } }, status as 400);
 }
 
-/** Bearer-token or session auth. Fails closed. */
+/**
+ * Resolve a bearer token into the request's principal.
+ *
+ * This only *establishes identity*. Authorisation is the single policy gate in
+ * `middleware/rbac.ts`, which runs next and treats a token-derived principal
+ * exactly like a cookie-derived one — so the API can never drift from the
+ * screens it mirrors.
+ */
 export function apiAuth(store: Store) {
   return async (c: Context, next: () => Promise<void>) => {
     const header = c.req.header("Authorization") ?? "";
-    if (header.startsWith("Bearer ")) {
-      const token = header.slice(7).trim();
-      const row = store.findApiToken(hashToken(token));
-      if (!row) return fail(c, 401, "unauthorized", "Unknown or revoked API token.");
-      store.touchApiToken(row.id);
-      const user = row.user_id === null ? null : store.getUser(row.user_id);
-      c.set("user", {
-        id: user?.id ?? 0,
-        email: user?.email ?? "token",
-        name: row.name,
-        role: (user?.role ?? "admin") as Role,
-        employeeId: user?.employee_id ?? null,
-      });
-      return next();
+    if (!header.startsWith("Bearer ")) return next();
+
+    const token = header.slice(7).trim();
+    const row = store.findApiToken(hashToken(token));
+    if (!row) return fail(c, 401, "unauthorized", "Unknown or revoked API token.");
+    store.touchApiToken(row.id);
+
+    const user = row.user_id === null ? null : store.getUser(row.user_id);
+    if (user && user.status === "disabled") {
+      return fail(c, 401, "unauthorized", "The account behind this token is disabled.");
     }
-    if (!currentPrincipal()) {
-      return fail(c, 401, "unauthorized", "Provide an API token as a Bearer header, or sign in.");
-    }
+    const principal = {
+      id: user?.id ?? 0,
+      email: user?.email ?? `token:${row.prefix}`,
+      name: user?.name ?? row.name,
+      // A token with no user behind it acts as admin, never owner: it must not
+      // be able to create accounts or change roles.
+      role: (user?.role ?? "admin") as Role,
+      employeeId: user?.employee_id ?? null,
+    };
+    c.set("user", principal);
+    setPrincipal(principal);
     return next();
   };
 }
 
-function guard(c: Context, capability: Capability): boolean {
-  const principal = currentPrincipal() ?? (c.get("user") as { role?: Role } | undefined);
-  const role = (principal as { role?: Role } | undefined)?.role;
-  return role !== undefined && can(role, capability);
-}
-
 export function createApiRoutes(store: Store): Hono {
   const app = new Hono();
-
-  app.use("/api/v1/*", apiAuth(store));
 
   app.onError((err, c) => {
     if (err instanceof AppError) {
@@ -89,22 +92,15 @@ export function createApiRoutes(store: Store): Hono {
     return fail(c, 500, "internal", "Something went wrong.");
   });
 
-  const need = (c: Context, capability: Capability) =>
-    guard(c, capability) ? null : fail(c, 403, "forbidden", "Your role does not have access to that.");
-
   // ---- delivery ----
 
   app.get("/api/v1/clients", (c) => {
-    const denied = need(c, "delivery.view");
-    if (denied) return denied;
     const { limit, offset } = paging(c);
     const all = store.listClients({ q: c.req.query("q") ?? undefined, status: c.req.query("status") ?? undefined });
     return ok(c, all.slice(offset, offset + limit), { limit, offset, total: all.length });
   });
 
   app.get("/api/v1/projects", (c) => {
-    const denied = need(c, "delivery.view");
-    if (denied) return denied;
     const { limit, offset } = paging(c);
     const clientId = c.req.query("client_id");
     const all = store.listProjects({
@@ -116,8 +112,6 @@ export function createApiRoutes(store: Store): Hono {
   });
 
   app.get("/api/v1/projects/:id", (c) => {
-    const denied = need(c, "delivery.view");
-    if (denied) return denied;
     const id = Number(c.req.param("id"));
     const project = store.getProject(id);
     if (!project) return fail(c, 404, "not_found", "No such project.");
@@ -129,8 +123,6 @@ export function createApiRoutes(store: Store): Hono {
   });
 
   app.get("/api/v1/projects/:id/activity", (c) => {
-    const denied = need(c, "delivery.view");
-    if (denied) return denied;
     const id = Number(c.req.param("id"));
     if (!store.getProject(id)) return fail(c, 404, "not_found", "No such project.");
     const days = Math.min(365, Math.max(1, Number(c.req.query("days") ?? 90) || 90));
@@ -144,8 +136,6 @@ export function createApiRoutes(store: Store): Hono {
   // ---- people ----
 
   app.get("/api/v1/employees", (c) => {
-    const denied = need(c, "people.view");
-    if (denied) return denied;
     const { limit, offset } = paging(c);
     const all = store.listEmployees({
       status: c.req.query("status") ?? undefined,
@@ -157,8 +147,6 @@ export function createApiRoutes(store: Store): Hono {
   });
 
   app.get("/api/v1/employees/:id/contribution", (c) => {
-    const denied = need(c, "people.view");
-    if (denied) return denied;
     const id = Number(c.req.param("id"));
     if (!store.getEmployee(id)) return fail(c, 404, "not_found", "No such employee.");
     const months = Math.min(60, Math.max(1, Number(c.req.query("months") ?? 12) || 12));
@@ -169,8 +157,6 @@ export function createApiRoutes(store: Store): Hono {
   // ---- code ----
 
   app.get("/api/v1/commits", (c) => {
-    const denied = need(c, "code.view");
-    if (denied) return denied;
     const { limit, offset } = paging(c);
     const repo = c.req.query("repo");
     const filters = {
@@ -188,22 +174,16 @@ export function createApiRoutes(store: Store): Hono {
   // ---- money (admin only) ----
 
   app.get("/api/v1/payroll/cycles", (c) => {
-    const denied = need(c, "payroll.manage");
-    if (denied) return denied;
     return ok(c, store.listCycles());
   });
 
   app.get("/api/v1/payroll/cycles/:id/payslips", (c) => {
-    const denied = need(c, "payroll.manage");
-    if (denied) return denied;
     const id = Number(c.req.param("id"));
     if (!store.getCycle(id)) return fail(c, 404, "not_found", "No such cycle.");
     return ok(c, store.listPayslips(id));
   });
 
   app.get("/api/v1/invoices", (c) => {
-    const denied = need(c, "invoice.view");
-    if (denied) return denied;
     return ok(c, store.listInvoices({ status: c.req.query("status") ?? undefined }));
   });
 

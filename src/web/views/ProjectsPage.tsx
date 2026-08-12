@@ -23,6 +23,7 @@ import {
   btn,
   inputCls,
 } from "./ui/kit.tsx";
+import { Can } from "./ui/gate.tsx";
 
 const KIND_LABELS: Record<string, string> = {
   client: "Client project",
@@ -62,9 +63,11 @@ export function ProjectsPage({
         title="Projects"
         subtitle={`${projects.length} ${projects.length === 1 ? "project" : "projects"}`}
         actions={
-          <a href="/projects/new" class={btn.primary}>
-            New project
-          </a>
+          <Can do="delivery.manage">
+            <a href="/projects/new" class={btn.primary}>
+              New project
+            </a>
+          </Can>
         }
       />
 
@@ -130,9 +133,11 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
           title="No projects yet"
           body="A project links a client to the repositories the work happens in — that link is what turns commits into delivery data."
           action={
-            <a href="/projects/new" class={btn.primary}>
-              Create the first project
-            </a>
+            <Can do="delivery.manage">
+              <a href="/projects/new" class={btn.primary}>
+                Create the first project
+              </a>
+            </Can>
           }
         />
       </div>
@@ -162,9 +167,11 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
               <Badge label={p.status} tone={STATUS_TONES[p.status] ?? "neutral"} />
             </td>
             <td class="whitespace-nowrap py-2 text-right">
-              <a href={`/projects/${p.id}/edit`} class={btn.small}>
-                Edit
-              </a>
+              <Can do="delivery.manage">
+                <a href={`/projects/${p.id}/edit`} class={btn.small}>
+                  Edit
+                </a>
+              </Can>
             </td>
           </tr>
         ))}
@@ -549,7 +556,7 @@ export function ProjectDetailPage({
           .filter(Boolean)
           .join(" · ")}
         actions={
-          <>
+          <Can do="delivery.manage">
             <a href={`/projects/${project.id}/edit`} class={btn.secondary}>
               Edit
             </a>
@@ -566,7 +573,7 @@ export function ProjectDetailPage({
                 Restore
               </button>
             )}
-          </>
+          </Can>
         }
       />
 

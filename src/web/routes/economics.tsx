@@ -8,16 +8,11 @@ import type { AuthService } from "../../services/auth.ts";
 import { mondayOf, type EconomicsService } from "../../services/economics.ts";
 import { currentPrincipal } from "../request-context.ts";
 import { friendlyError, page } from "../http.tsx";
-import { requireCapability } from "../middleware/auth.ts";
 import { Layout } from "../views/Layout.tsx";
 import { AgingPage, CapacityPage, InvoicesPage } from "../views/EconomicsPage.tsx";
 
 export function createEconomicsRoutes(store: Store, economics: EconomicsService, auth: AuthService): Hono {
   const app = new Hono();
-
-  app.use("/invoices", requireCapability("invoice.view"));
-  app.use("/invoices/*", requireCapability("invoice.view"));
-  app.use("/capacity", requireCapability("capacity.view"));
 
   const today = () => todayIso(config.tzOffsetMinutes);
 
@@ -50,7 +45,7 @@ export function createEconomicsRoutes(store: Store, economics: EconomicsService,
     ),
   );
 
-  app.post("/invoices", requireCapability("invoice.manage"), async (c) => {
+  app.post("/invoices", async (c) => {
     const body = (await c.req.parseBody()) as Record<string, unknown>;
     try {
       const created = economics.createInvoice(body);
@@ -65,7 +60,7 @@ export function createEconomicsRoutes(store: Store, economics: EconomicsService,
     }
   });
 
-  app.post("/invoices/:id/status", requireCapability("invoice.manage"), async (c) => {
+  app.post("/invoices/:id/status", async (c) => {
     const id = Number(c.req.param("id"));
     const body = (await c.req.parseBody()) as Record<string, unknown>;
     try {
@@ -77,7 +72,7 @@ export function createEconomicsRoutes(store: Store, economics: EconomicsService,
     }
   });
 
-  app.delete("/invoices/:id", requireCapability("invoice.manage"), (c) => {
+  app.delete("/invoices/:id", (c) => {
     try {
       economics.removeInvoice(Number(c.req.param("id")));
       return invoicesPage(c);

@@ -115,7 +115,7 @@ and **projects** and link repositories to them.
 bun install
 cp .env.example .env
 bun run dev          # builds CSS, then serves with hot reload on :3000
-bun test             # 223 unit tests
+bun test             # 271 unit tests
 bun run typecheck    # strict TypeScript
 
 # demo data to click around in (refuses to touch a real database)
@@ -135,8 +135,18 @@ SEED_CONFIRM=yes DB_PATH=./data/demo.db bun run seed
 | Settings, backup, tokens, audit | ✅ | ✅ | — | — |
 | Manage accounts | ✅ | — | — | — |
 
-Roles are enforced by route middleware, not only by hiding navigation. The last
-owner cannot be demoted or deleted.
+**How it is enforced.** Every request passes one authorisation gate backed by a
+single policy table (`src/web/policy.ts`) that names the capability required for
+each method and path. A route with no entry is **refused** — a new endpoint is
+unreachable until someone declares who may call it, and a test fails if any
+registered route is missing from the table. Reads and writes are separate:
+viewing a person needs `people.view`, editing one needs `people.manage`, and
+changing their salary needs `compensation.manage`. The JSON API resolves against
+the same table, so it cannot drift from the screens it mirrors. Hidden buttons
+and filtered navigation are tidiness only; the server refuses regardless.
+
+The full matrix is visible in the app at **Settings → Roles**. The last owner
+cannot be demoted or deleted, and nobody can change their own role.
 
 ## JSON API
 

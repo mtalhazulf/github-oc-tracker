@@ -12,8 +12,9 @@ import { createWebhookRoutes } from "./web/webhooks.ts";
 import { createAuthRoutes } from "./web/routes/auth.tsx";
 import { createAuthService } from "./services/auth.ts";
 import { csrfMiddleware, sessionMiddleware } from "./web/middleware/auth.ts";
+import { rbacMiddleware } from "./web/middleware/rbac.ts";
 import { AppError } from "./domain/errors.ts";
-import { createApiRoutes } from "./api/v1.ts";
+import { apiAuth, createApiRoutes } from "./api/v1.ts";
 
 function errorPage(title: string, detail: string): string {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
@@ -93,8 +94,13 @@ export function buildApp(store: Store, sync: SyncService, appSvc: GitHubAppServi
   app.use("/htmx.min.js", serveStatic({ path: "./public/htmx.min.js" }));
 
   const auth = createAuthService(store);
+  // Identity first (cookie, then bearer token), then CSRF, then the single
+  // authorisation gate. Order matters: rbac must see the principal whichever
+  // way it was established, and must run before any handler.
   app.use("*", sessionMiddleware(auth));
+  app.use("/api/*", apiAuth(store));
   app.use("*", csrfMiddleware());
+  app.use("*", rbacMiddleware());
 
   app.route("/", createApiRoutes(store));
   app.route("/", createAuthRoutes(store, auth));

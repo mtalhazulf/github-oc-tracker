@@ -13,10 +13,11 @@ export const CAPABILITIES = [
   "code.view", // dashboard, commits, repositories, organizations
   "code.manage", // add/remove repos & orgs, trigger sync, GitHub App settings
   "delivery.view", // clients & projects
-  "delivery.manage", // create/edit clients & projects, link repos
+  "delivery.manage", // create/edit clients & projects, link repos, staff teams
   "people.view", // employee profiles & identities
   "people.manage", // create/edit employees, map identities
-  "compensation.view", // salary figures and anyone's payslip
+  "compensation.view", // read salary figures and anyone's payslip
+  "compensation.manage", // write salary records
   "payslip.viewOwn", // one's own payslip only
   "payroll.manage", // generate/approve/pay cycles, edit tax slabs
   "invoice.view",
@@ -26,6 +27,25 @@ export const CAPABILITIES = [
   "users.manage", // create users, change roles
 ] as const;
 export type Capability = (typeof CAPABILITIES)[number];
+
+/** Human-readable description, used by the roles matrix screen. */
+export const CAPABILITY_LABELS: Record<Capability, string> = {
+  "code.view": "View dashboard, commits, repositories and organizations",
+  "code.manage": "Add or remove repositories and organizations, trigger syncs",
+  "delivery.view": "View clients and projects",
+  "delivery.manage": "Create and edit clients and projects, link repositories, staff teams",
+  "people.view": "View people and their GitHub identities",
+  "people.manage": "Create and edit people, map commit authors",
+  "compensation.view": "See salary figures and anyone's payslip",
+  "compensation.manage": "Add or remove salary records",
+  "payslip.viewOwn": "See their own payslip",
+  "payroll.manage": "Run, approve and pay payroll; edit tax slabs",
+  "invoice.view": "View invoices and receivables",
+  "invoice.manage": "Create invoices and change their status",
+  "capacity.view": "View the capacity grid and bench",
+  "settings.manage": "Settings, backup, API tokens and the audit log",
+  "users.manage": "Create accounts and change roles",
+};
 
 const MATRIX: Readonly<Record<Role, ReadonlySet<Capability>>> = Object.freeze({
   owner: new Set<Capability>(CAPABILITIES),
@@ -37,6 +57,7 @@ const MATRIX: Readonly<Record<Role, ReadonlySet<Capability>>> = Object.freeze({
     "people.view",
     "people.manage",
     "compensation.view",
+    "compensation.manage",
     "payslip.viewOwn",
     "payroll.manage",
     "invoice.view",

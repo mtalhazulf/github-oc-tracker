@@ -14,6 +14,7 @@ import {
   btn,
   inputCls,
 } from "./ui/kit.tsx";
+import { Can } from "./ui/gate.tsx";
 
 const STATUS_TONES: Record<string, "neutral" | "good" | "warn" | "critical"> = {
   prospect: "neutral",
@@ -37,9 +38,11 @@ export function ClientsPage({
         title="Clients"
         subtitle={`${clients.length} ${clients.length === 1 ? "client" : "clients"}`}
         actions={
-          <a href="/clients/new" class={btn.primary}>
-            Add client
-          </a>
+          <Can do="delivery.manage">
+            <a href="/clients/new" class={btn.primary}>
+              Add client
+            </a>
+          </Can>
         }
       />
 
@@ -89,9 +92,11 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
           title="No clients yet"
           body="Add the companies you deliver for. Projects hang off a client, and invoices follow from there."
           action={
-            <a href="/clients/new" class={btn.primary}>
-              Add the first client
-            </a>
+            <Can do="delivery.manage">
+              <a href="/clients/new" class={btn.primary}>
+                Add the first client
+              </a>
+            </Can>
           }
         />
       </div>
@@ -117,9 +122,11 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
               <Badge label={cl.status} tone={STATUS_TONES[cl.status] ?? "neutral"} />
             </td>
             <td class="whitespace-nowrap py-2 text-right">
-              <a href={`/clients/${cl.id}/edit`} class={btn.small}>
-                Edit
-              </a>
+              <Can do="delivery.manage">
+                <a href={`/clients/${cl.id}/edit`} class={btn.small}>
+                  Edit
+                </a>
+              </Can>
             </td>
           </tr>
         ))}
@@ -224,7 +231,7 @@ export function ClientDetailPage({ client, projects }: { client: ClientRow; proj
         title={client.name}
         subtitle={`${client.code} · ${client.currency} · Net ${client.payment_terms_days}`}
         actions={
-          <>
+          <Can do="delivery.manage">
             <a href={`/projects/new?client_id=${client.id}`} class={btn.secondary}>
               New project
             </a>
@@ -244,7 +251,7 @@ export function ClientDetailPage({ client, projects }: { client: ClientRow; proj
                 Restore
               </button>
             )}
-          </>
+          </Can>
         }
       />
 
