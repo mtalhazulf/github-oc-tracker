@@ -8,23 +8,17 @@ services:
     environment:
       NODE_ENV: production
       DB_PATH: /data/tracker.db
-      # GitHub access — a fine-grained PAT or classic token with repo/read:org scope.
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       GITHUB_API_URL: ${GITHUB_API_URL:-https://api.github.com}
-      # Public URL of this deployment — required for webhooks / the GitHub App.
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
-      # Secret for manually configured webhooks (GitHub App manages its own).
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
-      # Background sync
       SYNC_INTERVAL_MINUTES: ${SYNC_INTERVAL_MINUTES:-30}
       SYNC_CONCURRENCY: ${SYNC_CONCURRENCY:-2}
       MAX_COMMITS_PER_SYNC: ${MAX_COMMITS_PER_SYNC:-10000}
       AUTO_TRACK_NEW_REPOS: ${AUTO_TRACK_NEW_REPOS:-true}
       INCLUDE_FORKS: ${INCLUDE_FORKS:-false}
       INCLUDE_ARCHIVED: ${INCLUDE_ARCHIVED:-true}
-      # Display timezone for commit-time analytics, as minutes east of UTC.
       TZ_OFFSET_MINUTES: ${TZ_OFFSET_MINUTES:-0}
-      # Optional dashboard login — set both to enable HTTP basic auth.
       BASIC_AUTH_USER: ${BASIC_AUTH_USER:-}
       BASIC_AUTH_PASS: ${BASIC_AUTH_PASS:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}

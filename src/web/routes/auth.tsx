@@ -14,7 +14,6 @@ import { AuditPage, LoginPage, SetupPage, UsersPage } from "../views/AuthPages.t
 import { RolesPage } from "../views/RolesPage.tsx";
 
 function safeNext(raw: string | undefined): string {
-  // Only same-origin absolute paths — never an attacker-supplied host.
   if (!raw) return "/";
   if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
   return raw;
@@ -22,8 +21,6 @@ function safeNext(raw: string | undefined): string {
 
 export function createAuthRoutes(store: Store, auth: AuthService): Hono {
   const app = new Hono();
-
-  // ---- first-boot setup ----
 
   app.get("/setup", (c) => {
     if (!auth.needsSetup) return c.redirect("/");
@@ -52,8 +49,6 @@ export function createAuthRoutes(store: Store, auth: AuthService): Hono {
       );
     }
   });
-
-  // ---- login / logout ----
 
   app.get("/login", (c) => {
     if (auth.needsSetup) return c.redirect("/setup");
@@ -88,8 +83,6 @@ export function createAuthRoutes(store: Store, auth: AuthService): Hono {
     c.header("HX-Redirect", "/login");
     return c.text("ok");
   });
-
-  // ---- account management (owner only) ----
 
   function usersPage(c: Parameters<typeof page>[0], errors = {}, message?: string) {
     return page(
@@ -144,8 +137,6 @@ export function createAuthRoutes(store: Store, auth: AuthService): Hono {
     }
   });
 
-  // ---- roles reference (readable by anyone signed in) ----
-
   app.get("/settings/roles", (c) =>
     page(
       c,
@@ -154,8 +145,6 @@ export function createAuthRoutes(store: Store, auth: AuthService): Hono {
       </Layout>,
     ),
   );
-
-  // ---- audit ----
 
   app.get("/settings/audit", (c) => {
     const entity = c.req.query("entity") ?? "";

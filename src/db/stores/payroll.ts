@@ -57,7 +57,6 @@ export interface TaxSlabRow {
   rate_bp: number;
 }
 
-/** One row per employee eligible for a period, with the compensation in force. */
 export interface GenerationCandidate {
   employee_id: number;
   full_name: string;
@@ -126,18 +125,11 @@ export function createPayrollStore(db: Database) {
       db.query("DELETE FROM payroll_cycles WHERE id = ?").run(id);
     },
 
-    /** Only draft cycles may be deleted; checked in the same statement as the delete. */
     deleteCycleIfDraft(id: number): number {
       const res = db.query("DELETE FROM payroll_cycles WHERE id = ? AND status = 'draft'").run(id);
       return res.changes;
     },
 
-    // ---- generation ----
-
-    /**
-     * Eligible employees with the compensation record in force on the period end,
-     * plus pro-rated payable days for mid-period joiners and leavers.
-     */
     generationCandidates(periodStart: string, periodEnd: string): GenerationCandidate[] {
       return db
         .query(
@@ -252,8 +244,6 @@ export function createPayrollStore(db: Database) {
       );
     },
 
-    // ---- items ----
-
     listItems(payslipId: number): PayslipItemRow[] {
       return db
         .query("SELECT * FROM payslip_items WHERE payslip_id = ? ORDER BY kind, sort_order, id")
@@ -297,8 +287,6 @@ export function createPayrollStore(db: Database) {
       return row;
     },
 
-    // ---- tax slabs ----
-
     listTaxSlabs(fiscalYear: string): TaxSlabRow[] {
       return db
         .query("SELECT * FROM tax_slabs WHERE fiscal_year = ? ORDER BY lower_annual_minor")
@@ -331,9 +319,6 @@ export function createPayrollStore(db: Database) {
       db.query("DELETE FROM tax_slabs WHERE id = ?").run(id);
     },
 
-    // ---- economics input ----
-
-    /** Payslip gross allocated across the projects each person was assigned to. */
     projectCostForPeriod(
       period: string,
       periodStart: string,
@@ -346,8 +331,6 @@ export function createPayrollStore(db: Database) {
              FROM project_assignments pa
              WHERE pa.start_on <= ? AND (pa.end_on IS NULL OR pa.end_on >= ?)),
            tot AS (
-             -- max(100, allocated) leaves a bench remainder when under-allocated
-             -- and normalises instead of over-charging when over-allocated
              SELECT employee_id, MAX(100, SUM(allocation_pct)) AS denom FROM alloc GROUP BY employee_id)
            SELECT a.project_id, ps.currency,
                   CAST(SUM(ps.gross_minor * a.allocation_pct * 1.0 / t.denom) AS INTEGER) AS actual_cost_minor

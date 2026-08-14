@@ -196,8 +196,6 @@ describe("api project detail", () => {
 describe("csrf exemption for bearer tokens", () => {
   test("the API is reachable without a CSRF token", async () => {
     const { app, store } = await setup();
-    // GETs are always safe; the point is that the session middleware does not
-    // redirect an API call to /login when a bearer token is present.
     const res = await get(app, "/api/v1/employees", tokenFor(store));
     expect(res.status).toBe(200);
   });

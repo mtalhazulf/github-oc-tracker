@@ -3,7 +3,6 @@ interface Props {
   error?: string | null | undefined;
 }
 
-/** Status chip — icon + label, never color alone. */
 export function SyncBadge({ status, error }: Props) {
   switch (status) {
     case "syncing":

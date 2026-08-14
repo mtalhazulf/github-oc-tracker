@@ -47,7 +47,6 @@ function shutdown(signal: string) {
   try {
     db.close();
   } catch {
-    // best-effort close
   }
   process.exit(0);
 }

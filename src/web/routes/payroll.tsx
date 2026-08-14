@@ -56,8 +56,6 @@ export function createPayrollRoutes(store: Store, payroll: PayrollService, auth:
     );
   }
 
-  // ---- cycles ----
-
   app.get("/payroll", (c) => listPage(c));
 
   app.post("/payroll/cycles", async (c) => {
@@ -124,14 +122,6 @@ export function createPayrollRoutes(store: Store, payroll: PayrollService, auth:
     });
   });
 
-  // ---- payslips ----
-
-  /**
-   * Per-record rule the policy cannot express: the policy lets any signed-in
-   * user reach a payslip URL, and this decides whether it is *theirs*. Anyone
-   * holding compensation.view sees every payslip; everyone else sees only the
-   * one attached to their linked employee record.
-   */
   function canRead(_c: Context, employeeId: number): boolean {
     const principal = currentPrincipal();
     if (!principal) return false;
@@ -210,8 +200,6 @@ export function createPayrollRoutes(store: Store, payroll: PayrollService, auth:
       );
     }
   });
-
-  // ---- tax slabs ----
 
   function slabsPage(c: Context, error?: string) {
     const settings = store.getSettings();

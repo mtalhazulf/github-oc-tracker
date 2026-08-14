@@ -1,9 +1,3 @@
-/**
- * Inline SVG icons — no icon package. The CSP forbids CDN assets, and a
- * dependency for a dozen paths is not slim. All are 24×24 stroke icons so they
- * scale from one class and inherit `currentColor`.
- */
-
 const PATHS = {
   dashboard: "M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z",
   projects: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z",

@@ -9,7 +9,6 @@ const ROLE_SUMMARY: Record<Role, string> = {
   member: "Read-only across delivery and people, plus their own payslip.",
 };
 
-/** How many routes each capability actually protects — the model made concrete. */
 function routeCount(capability: string): number {
   return POLICY.filter((e) => e.access.kind === "capability" && e.access.capability === capability).reduce(
     (sum, e) => sum + e.methods.length,
@@ -65,8 +64,6 @@ export function RolesPage({ current }: { current: Role }) {
                 {routeCount(capability) > 0 ? (
                   routeCount(capability)
                 ) : (
-                  // Not dead: it gates panels and per-record checks (whose payslip
-                  // you may open, whether salary shows on a profile) rather than URLs.
                   <span
                     class="text-xs text-ink-muted"
                     title="Gates fields and individual records rather than whole routes"

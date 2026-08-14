@@ -83,8 +83,6 @@ export const migrations: Migration[] = [
       ALTER TABLE repositories ADD COLUMN installation_id INTEGER;
       ALTER TABLE organizations ADD COLUMN installation_id INTEGER;
 
-      -- Single-row table holding this deployment's GitHub App credentials
-      -- (created via the app-manifest flow, Dokploy-style).
       CREATE TABLE github_app (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         app_id INTEGER NOT NULL,
@@ -158,8 +156,6 @@ export const migrations: Migration[] = [
       );
       CREATE INDEX idx_employees_status ON employees(status, archived_at);
 
-      -- Append-only. A row is in force from effective_from until the next row starts.
-      -- No effective_to: one boundary per row means gaps and overlaps are unrepresentable.
       CREATE TABLE employee_compensation (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
@@ -171,8 +167,6 @@ export const migrations: Migration[] = [
         UNIQUE (employee_id, effective_from)
       );
 
-      -- One identity belongs to exactly one employee. That UNIQUE is what guarantees
-      -- the commit->employee join can never fan out, so COUNT(*) over it is a true count.
       CREATE TABLE employee_identities (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
@@ -184,8 +178,6 @@ export const migrations: Migration[] = [
       );
       CREATE INDEX idx_employee_identities_employee ON employee_identities(employee_id, kind);
 
-      -- Bots and one-off outside contributors. Without this the mapping inbox never
-      -- reaches zero and the whole identity feature is abandoned in week one.
       CREATE TABLE ignored_authors (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         kind TEXT NOT NULL CHECK (kind IN ('login','email','pattern')),
@@ -200,12 +192,9 @@ export const migrations: Migration[] = [
         ('login','github-actions','GitHub Actions'),
         ('login','renovate','Renovate');
 
-      -- GitHub logins and git emails are case-insensitive; the v1 indexes are BINARY.
       CREATE INDEX idx_commits_author_login_ci ON commits(author_login COLLATE NOCASE);
       CREATE INDEX idx_commits_author_email_ci ON commits(author_email COLLATE NOCASE);
 
-      -- Commit -> employee. Login wins over email. NULL = unmapped.
-      -- Emits exactly one row per commit (UNIQUE(kind,value) prevents fan-out).
       CREATE VIEW v_commit_employee AS
       SELECT c.id AS commit_id, c.repo_id AS repo_id, c.author_ts AS author_ts,
              COALESCE(il.employee_id, ie.employee_id) AS employee_id
@@ -260,18 +249,13 @@ export const migrations: Migration[] = [
         created_at INTEGER NOT NULL DEFAULT (unixepoch()),
         updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
         archived_at INTEGER,
-        -- Client work names its client; internal work cannot have one.
         CHECK ((kind = 'client') = (client_id IS NOT NULL)),
-        -- Internal work is never invoiced.
         CHECK (kind = 'client' OR billing_model = 'none'),
         CHECK (end_on IS NULL OR start_on IS NULL OR end_on >= start_on)
       );
       CREATE INDEX idx_projects_client ON projects(client_id);
       CREATE INDEX idx_projects_status ON projects(status, archived_at);
 
-      -- A project spans N repositories, and a shared library legitimately serves
-      -- two engagements. Exactly one project may hold the PRIMARY link for a repo,
-      -- which is what makes cross-project rollups count each commit once.
       CREATE TABLE project_repositories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -298,12 +282,10 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_assignments_project ON project_assignments(project_id);
       CREATE INDEX idx_assignments_employee ON project_assignments(employee_id);
 
-      -- Denormalised so the clients list does not run a correlated MAX() per row.
       ALTER TABLE repositories ADD COLUMN last_commit_ts INTEGER;
       UPDATE repositories SET last_commit_ts =
         (SELECT MAX(c.author_ts) FROM commits c WHERE c.repo_id = repositories.id);
 
-      -- Exactly one project per repo for rollups: the primary link, else the oldest.
       CREATE VIEW v_repo_project AS
       SELECT pr.repo_id AS repo_id, pr.project_id AS project_id
       FROM project_repositories pr
@@ -369,8 +351,6 @@ export const migrations: Migration[] = [
         updated_at INTEGER NOT NULL DEFAULT (unixepoch())
       );
 
-      -- A payslip is a DOCUMENT: every figure and label is snapshotted at
-      -- generation, so renaming or re-banding an employee never rewrites history.
       CREATE TABLE payslips (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         cycle_id INTEGER NOT NULL REFERENCES payroll_cycles(id) ON DELETE CASCADE,
@@ -407,8 +387,6 @@ export const migrations: Migration[] = [
       );
       CREATE INDEX idx_payslip_items_payslip ON payslip_items(payslip_id);
 
-      -- Tax is DATA, not code: the app ships zero slabs, the owner enters their
-      -- brackets, and with none configured tax is simply a manual deduction line.
       CREATE TABLE tax_slabs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fiscal_year TEXT NOT NULL,
@@ -447,8 +425,6 @@ export const migrations: Migration[] = [
     version: 8,
     name: "api tokens",
     sql: `
-      -- Only the SHA-256 of a token is stored; the plaintext is shown once at
-      -- creation and is unrecoverable afterwards.
       CREATE TABLE api_tokens (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,

@@ -3,10 +3,6 @@ import { log } from "../logger.ts";
 import type { Store } from "../db/store.ts";
 import type { SyncService } from "./service.ts";
 
-/**
- * Periodic background sync: re-discovers org repositories and queues
- * incremental commit syncs for every tracked repository.
- */
 export class Scheduler {
   private timer: ReturnType<typeof setInterval> | null = null;
 
@@ -24,10 +20,8 @@ export class Scheduler {
     this.timer = setInterval(() => {
       this.tick().catch((err) => log.error("scheduled sync failed", { err: String(err) }));
     }, ms);
-    // Don't keep the process alive just for the scheduler.
     if (typeof this.timer === "object" && "unref" in this.timer) this.timer.unref();
     log.info("background sync scheduled", { everyMinutes: config.syncIntervalMinutes });
-    // Catch up on anything never synced (e.g. after a restart mid-sync).
     this.sync.queueAll();
   }
 

@@ -44,7 +44,6 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
   );
 }
 
-/** First-run onboarding: shown instead of empty charts (nothing to read yet). */
 function GetStarted() {
   return (
     <section class="rounded-lg border border-hairline bg-surface p-8 text-center">
@@ -82,7 +81,6 @@ export function DashboardContent({ d }: { d: DashboardData }) {
   }
 
   const dayMap = new Map(d.perDay.map((p) => [p.day, p.n]));
-  // Shift "now" by the display offset so day buckets line up with the SQL grouping.
   const now = Date.now() + tzOffsetSeconds * 1000;
   const perDayPoints = Array.from({ length: d.days }, (_, i) => {
     const dt = new Date(now - (d.days - 1 - i) * 86400_000);

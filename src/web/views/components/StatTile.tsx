@@ -6,7 +6,6 @@ interface Props {
   delta?: { value: number; period: string } | undefined;
 }
 
-/** Stat tile: label · compact value · optional signed delta vs a named period. */
 export function StatTile({ label, value, delta }: Props) {
   return (
     <div class="rounded-lg border border-hairline bg-surface p-4">

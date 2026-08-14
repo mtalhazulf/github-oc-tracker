@@ -68,8 +68,6 @@ function request(
   });
 }
 
-// ---------------------------------------------------------------- coverage
-
 describe("policy coverage", () => {
   test("every registered route has a policy entry", () => {
     const ctx = makeApp();
@@ -80,7 +78,6 @@ describe("policy coverage", () => {
       if (route.method === "ALL") continue;
       const key = `${route.method} ${route.path}`;
       if (declared.has(key)) continue;
-      // Also accept a resolvable match (the entry may cover it via a pattern).
       const probePath = route.path.replace(/:[A-Za-z]+/g, "1");
       if (resolveAccess(route.method, probePath) !== null) continue;
       missing.push(key);
@@ -95,7 +92,6 @@ describe("policy coverage", () => {
   });
 
   test("more specific patterns win over parameterised ones", () => {
-    // /clients/new must not be served by the /clients/:id rule.
     expect(resolveAccess("GET", "/clients/new")).toMatchObject({ capability: "delivery.manage" });
     expect(resolveAccess("GET", "/clients/7")).toMatchObject({ capability: "delivery.view" });
     expect(resolveAccess("GET", "/employees/new")).toMatchObject({ capability: "people.manage" });
@@ -110,9 +106,6 @@ describe("policy coverage", () => {
   });
 });
 
-// ---------------------------------------------------------------- the holes
-
-/** Routes that were reachable by a read-only member before this policy existed. */
 const REGRESSIONS: [string, string, string][] = [
   ["POST", "/employees/1/compensation", "write a salary record"],
   ["DELETE", "/employees/1/compensation/1", "delete a salary record"],
@@ -205,8 +198,6 @@ describe("admin vs owner", () => {
   });
 });
 
-// ---------------------------------------------------------------- per-record
-
 describe("payslip ownership", () => {
   async function seedPayslip(ctx: Ctx): Promise<{ payslipId: number; employeeId: number }> {
     const { createEmployeeService } = await import("../src/services/employees.ts");
@@ -236,7 +227,6 @@ describe("payslip ownership", () => {
     await ctx.auth.setupOwner({ name: "Owner", email: "owner@h.pk", password: "correct-horse-battery" });
     const { payslipId, employeeId } = await seedPayslip(ctx);
 
-    // Someone else's payslip: denied.
     const stranger = await ctx.auth.createUser({
       name: "Stranger",
       email: "stranger@h.pk",
@@ -247,7 +237,6 @@ describe("payslip ownership", () => {
     let probe = { app: ctx.app, cookie: `sid=${session?.sessionId}`, csrf: session?.csrfToken ?? "" };
     expect((await request(probe, "GET", `/payslips/${payslipId}`)).status).toBe(403);
 
-    // Now link that account to the employee: their own payslip opens.
     ctx.auth.updateUser(
       stranger.id,
       { name: "Stranger", role: "member", employee_id: String(employeeId), status: "active" },
@@ -278,8 +267,6 @@ describe("payslip ownership", () => {
     expect((await request(probe, "POST", `/payslips/${payslipId}`, "payable_days=31")).status).toBe(403);
   });
 });
-
-// ---------------------------------------------------------------- API parity
 
 describe("the API enforces the same policy", () => {
   async function tokenFor(ctx: Ctx, role: Role): Promise<string> {
@@ -320,8 +307,6 @@ describe("the API enforces the same policy", () => {
     expect(res.headers.get("content-type")).toContain("application/json");
   });
 });
-
-// ---------------------------------------------------------------- full sweep
 
 describe("full role × route sweep", () => {
   test("no role reaches a route its capability does not allow", async () => {

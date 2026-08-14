@@ -221,8 +221,6 @@ export function createStore(db: Database) {
     ...createPayrollStore(db),
     ...createEconomicsStore(db),
 
-    // ---- organizations ----
-
     insertOrg(o: {
       login: string;
       name: string | null;
@@ -289,10 +287,7 @@ export function createStore(db: Database) {
       ).run(id);
     },
 
-    // ---- repositories ----
-
     upsertRepo(r: NewRepo): { id: number; inserted: boolean } {
-      // Match by immutable GitHub id first so renames/transfers update in place.
       const existing = (r.githubId !== null
         ? (db
             .query("SELECT id FROM repositories WHERE github_id = ?")
@@ -423,8 +418,6 @@ export function createStore(db: Database) {
       return row.m;
     },
 
-    // ---- commits ----
-
     insertCommits(repoId: number, commits: NewCommit[]): number {
       if (commits.length === 0) return 0;
       const stmt = db.query(
@@ -490,8 +483,6 @@ export function createStore(db: Database) {
       return row.n;
     },
 
-    // ---- analytics (tz-aware via a fixed offset in seconds) ----
-
     commitsPerDay(
       filters: CommitFilters,
       days: number,
@@ -524,7 +515,6 @@ export function createStore(db: Database) {
       filters: CommitFilters,
       tzOffsetSeconds: number,
     ): { weekday: number; n: number }[] {
-      // weekday: 0 = Sunday … 6 = Saturday (SQLite %w)
       const { clause, params } = commitWhere(filters);
       return db
         .query(
@@ -578,8 +568,6 @@ export function createStore(db: Database) {
         last_ts: number;
       }[];
     },
-
-    // ---- github app / installations / webhooks ----
 
     getGithubApp(): GithubAppRow | null {
       return (db.query("SELECT * FROM github_app WHERE id = 1").get() as GithubAppRow | undefined) ?? null;
@@ -654,7 +642,6 @@ export function createStore(db: Database) {
       db.query("UPDATE installations SET last_event_at = unixepoch() WHERE id = ?").run(id);
     },
 
-    /** Installation uninstalled: keep tracked history, but detach and flag repos. */
     removeInstallation(id: number): void {
       const detach = db.transaction(() => {
         db.query(
@@ -692,7 +679,6 @@ export function createStore(db: Database) {
         `INSERT INTO webhook_events (delivery_id, event, action, repo_full_name, status, note)
          VALUES (?, ?, ?, ?, ?, ?)`,
       ).run(e.deliveryId, e.event, e.action, e.repoFullName, e.status, e.note);
-      // Keep the log bounded.
       db.query(
         `DELETE FROM webhook_events WHERE id NOT IN (SELECT id FROM webhook_events ORDER BY id DESC LIMIT 500)`,
       ).run();
@@ -703,8 +689,6 @@ export function createStore(db: Database) {
         .query("SELECT * FROM webhook_events ORDER BY id DESC LIMIT ?")
         .all(limit) as WebhookEventRow[];
     },
-
-    // ---- sync runs ----
 
     startSyncRun(repoId: number): number {
       const res = db.query("INSERT INTO sync_runs (repo_id) VALUES (?)").run(repoId);

@@ -1,10 +1,3 @@
-/**
- * Demo data for evaluating the UI. Run with `bun run seed`.
- *
- * Refuses to touch anything that looks like a real database, and never runs
- * from the app itself. Deterministic — no PRNG — so screenshots and tests are
- * reproducible.
- */
 import { config } from "../config.ts";
 import { createDb } from "./index.ts";
 import { createStore } from "./store.ts";
@@ -52,7 +45,6 @@ export function seed(): void {
   const payroll = createPayrollService(store);
   const economics = createEconomicsService(store);
 
-  // ---- clients ----
   const northwind = delivery.createClient({
     name: "Northwind Ltd",
     code: "NW",
@@ -73,7 +65,6 @@ export function seed(): void {
   });
   delivery.createClient({ name: "Helios GmbH", code: "HG", currency: "EUR", status: "prospect" });
 
-  // ---- people ----
   const team = [
     ["EMP-001", "Ayesha Khan", "Tech Lead", "Engineering", "ayeshak", "300,000", "2024-02-01"],
     ["EMP-002", "Bilal Ahmed", "Senior Engineer", "Engineering", "bilal-a", "250,000", "2024-06-15"],
@@ -104,7 +95,6 @@ export function seed(): void {
     return { ...employee, login };
   });
 
-  // A raise, so the effective-dated path has something to show.
   const lead = people[0];
   if (lead) {
     employees.addCompensation(lead.id, {
@@ -115,7 +105,6 @@ export function seed(): void {
     });
   }
 
-  // A contractor with no salary on file — the per-deliverable path.
   employees.create({
     code: "EMP-100",
     full_name: "Kamran Ali",
@@ -126,7 +115,6 @@ export function seed(): void {
     employment_type: "contract",
   });
 
-  // ---- projects ----
   const portal = delivery.createProject({
     code: "NW-PORTAL",
     name: "Northwind Portal",
@@ -167,7 +155,6 @@ export function seed(): void {
     status: "active",
   });
 
-  // ---- repositories and commits ----
   const repos = ["acme/portal-api", "acme/portal-web", "acme/shared-ui", "acme/foods-app", "acme/scheduler"];
   const repoIds = repos.map(
     (fullName) =>
@@ -183,8 +170,6 @@ export function seed(): void {
         isFork: false,
         isArchived: false,
         htmlUrl: `https://github.com/${fullName}`,
-        // tracked = 0 would be safer, but these are placeholders in a demo DB;
-        // the scheduler is disabled in seeded environments.
       }).id,
   );
   for (const id of repoIds) store.setRepoSync(id, "idle");
@@ -198,7 +183,6 @@ export function seed(): void {
       const daysAgo = (i * 7 + repoIndex * 3) % 80;
       const hour = 9 + ((i * 3) % 9);
       const ts = now - daysAgo * 86_400 - hour * 3600;
-      // One deliberate case variant, so the collation path is exercised by hand.
       const login = i === 5 ? author.login.toUpperCase() : author.login;
       commits.push({
         sha: `${repoIndex}${String(i).padStart(4, "0")}deadbeefcafe${repoIndex}${i}`,
@@ -215,7 +199,6 @@ export function seed(): void {
         htmlUrl: null,
       });
     }
-    // Two unmapped authors and a bot, so the mapping inbox has work to show.
     commits.push(
       makeCommit("outside-contributor", now - 3 * 86_400, repoIndex, 900),
       makeCommit("dependabot[bot]", now - 2 * 86_400, repoIndex, 901),
@@ -223,16 +206,14 @@ export function seed(): void {
     store.insertCommits(repoId, commits);
   });
 
-  // Link repos: portal spans three, one of them shared with the internal product.
   const [portalApi, portalWeb, sharedUi, foodsRepo, schedulerRepo] = repoIds;
   if (portalApi !== undefined) delivery.linkRepo(portal.id, portalApi, false);
   if (portalWeb !== undefined) delivery.linkRepo(portal.id, portalWeb, false);
   if (sharedUi !== undefined) delivery.linkRepo(portal.id, sharedUi, false);
-  if (sharedUi !== undefined) delivery.linkRepo(scheduler.id, sharedUi, false); // shared, not primary
+  if (sharedUi !== undefined) delivery.linkRepo(scheduler.id, sharedUi, false);
   if (foodsRepo !== undefined) delivery.linkRepo(foodsApp.id, foodsRepo, false);
   if (schedulerRepo !== undefined) delivery.linkRepo(scheduler.id, schedulerRepo, false);
 
-  // ---- allocations ----
   const alloc: [number, number, number, string][] = [
     [portal.id, people[0]?.id ?? 0, 60, "Tech lead"],
     [portal.id, people[1]?.id ?? 0, 100, "Backend"],
@@ -251,7 +232,6 @@ export function seed(): void {
     });
   }
 
-  // ---- payroll: one paid month, one draft ----
   for (const [period, finalise] of [
     ["2026-07", true],
     ["2026-08", false],
@@ -264,7 +244,6 @@ export function seed(): void {
     }
   }
 
-  // ---- invoices across the aging buckets ----
   const invoices: [string, number, number | null, string, string, string, string][] = [
     ["NW-2026-06", northwind.id, portal.id, "40,000", "2026-06-01", "2026-07-01", "sent"],
     ["NW-2026-07", northwind.id, portal.id, "40,000", "2026-07-01", "2026-08-01", "sent"],

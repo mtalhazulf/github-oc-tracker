@@ -2,7 +2,6 @@ import type { Child } from "hono/jsx";
 import { fmtDateTime, timeAgo } from "../../format.ts";
 import { fmtMoney } from "../../../domain/money.ts";
 
-/** Page title + optional subtitle, with actions pinned right. */
 export function PageHeader({
   title,
   subtitle,
@@ -51,7 +50,6 @@ export const btn = {
 export const inputCls =
   "w-full rounded-md border border-hairline bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted";
 
-/** Labelled form control with an inline error slot. */
 export function Field({
   name,
   label,
@@ -174,7 +172,6 @@ export function Badge({ label, tone = "neutral", title }: { label: string; tone?
   );
 }
 
-/** Table shell — every list screen uses this so they stay consistent. */
 export function Table({ head, children }: { head: string[]; children: Child }) {
   return (
     <div class="overflow-x-auto rounded-lg border border-hairline bg-surface px-4 pb-2" tabindex={0}>
@@ -197,13 +194,11 @@ export function Money({ minor, currency }: { minor: number | null; currency: str
   return <span class="tabular-nums">{fmtMoney(minor, currency)}</span>;
 }
 
-/** Relative time with the absolute timestamp on hover. */
 export function When({ ts }: { ts: number | null }) {
   if (ts === null) return <span class="text-ink-muted">never</span>;
   return <span title={fmtDateTime(ts)}>{timeAgo(ts)}</span>;
 }
 
-/** A form-level error banner for HTMX targets. */
 export function FormError({ message }: { message?: string | undefined }) {
   if (!message) return <div id="form-error"></div>;
   return (

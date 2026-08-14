@@ -36,7 +36,6 @@ export function createAuthService(store: Store) {
       return store.countUsers() === 0;
     },
 
-    /** First boot: creates the owner. Refuses once any account exists. */
     async setupOwner(body: Record<string, unknown>): Promise<Principal> {
       if (store.countUsers() > 0) {
         throw new ForbiddenError("Setup has already been completed.");
@@ -84,7 +83,6 @@ export function createAuthService(store: Store) {
       if (!isRole(roleRaw)) {
         throw new ValidationError("Choose a valid role.", { role: "Choose a valid role." });
       }
-      // The last owner must stay an owner, or nobody can manage users again.
       if (user.role === "owner" && roleRaw !== "owner" && this.countOwners() === 1) {
         throw new ConflictError("This is the only owner account — promote someone else first.");
       }
@@ -124,14 +122,12 @@ export function createAuthService(store: Store) {
       return store.listUsers().filter((u) => u.role === "owner").length;
     },
 
-    /** Verify credentials and open a session. Timing is uniform on both paths. */
     async login(
       email: string,
       password: string,
     ): Promise<{ sessionId: string; csrfToken: string; principal: Principal } | null> {
       const user = store.getUserByEmail(email.trim());
       if (!user || user.status === "disabled") {
-        // Hash anyway so a missing account is not detectably faster.
         await Bun.password.hash(password);
         return null;
       }
@@ -194,7 +190,6 @@ function parseCredentials(
   return { email, name, password };
 }
 
-/** Constant-time compare for CSRF tokens. */
 export function tokensMatch(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
   const bufB = Buffer.from(b);
@@ -202,7 +197,6 @@ export function tokensMatch(a: string, b: string): boolean {
   return timingSafeEqual(bufA, bufB);
 }
 
-/** Throws unless the principal holds the capability. */
 export function requireCap(principal: Principal | null, capability: Capability): Principal {
   if (!principal) throw new ForbiddenError("Sign in to continue.");
   if (!can(principal.role, capability)) {

@@ -72,9 +72,7 @@ export interface GitHubCommit {
 interface ClientOptions {
   apiUrl?: string;
   token?: string;
-  /** Dynamic token source (e.g. GitHub App installation tokens). Wins over `token`. */
   tokenProvider?: () => Promise<string | undefined>;
-  /** Max seconds to sleep waiting for a rate-limit window before giving up. */
   maxRateLimitWaitSeconds?: number;
   fetchFn?: typeof fetch;
 }
@@ -120,7 +118,6 @@ export class GitHubClient {
     if (token) headers.Authorization = `Bearer ${token}`;
 
     let attempt = 0;
-    // Up to 3 retries for transient failures, plus at most one rate-limit wait.
     for (;;) {
       attempt += 1;
       let res: Response;
@@ -167,7 +164,6 @@ export class GitHubClient {
     }
   }
 
-  /** Authenticated GET returning parsed JSON (public for app-level endpoints). */
   async json<T>(path: string, searchParams?: Record<string, string>): Promise<T> {
     return this.getJson<T>(path, searchParams);
   }
@@ -182,7 +178,6 @@ export class GitHubClient {
     return (await res.json()) as T;
   }
 
-  /** Resolve a login as an organization, falling back to a user account. */
   async getAccount(login: string): Promise<GitHubAccount> {
     const enc = encodeURIComponent(login);
     try {
@@ -214,7 +209,6 @@ export class GitHubClient {
     return mapRepo(raw);
   }
 
-  /** List all repositories of an org (or user), paginated. */
   async *listRepos(login: string, kind: "org" | "user"): AsyncGenerator<GitHubRepo[]> {
     const enc = encodeURIComponent(login);
     const base = kind === "org" ? `/orgs/${enc}/repos` : `/users/${enc}/repos`;
@@ -233,7 +227,6 @@ export class GitHubClient {
     }
   }
 
-  /** List repositories granted to the current installation token, paginated. */
   async *listInstallationRepos(): AsyncGenerator<GitHubRepo[]> {
     let page = 1;
     for (;;) {
@@ -249,10 +242,6 @@ export class GitHubClient {
     }
   }
 
-  /**
-   * List commits on the default branch, newest first, paginated.
-   * `since` is an ISO timestamp lower bound (inclusive-ish; GitHub filters by committer date).
-   */
   async *listCommits(
     owner: string,
     name: string,
@@ -265,7 +254,6 @@ export class GitHubClient {
       if (opts.since) params.since = opts.since;
       const res = await this.request(base, params);
       if (res.status === 404) throw new NotFoundError(base);
-      // 409 = repository is empty (no commits yet)
       if (res.status === 409) return;
       if (!res.ok) {
         const body = await res.text();

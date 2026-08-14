@@ -124,8 +124,6 @@ describe("AR aging", () => {
       ...INVOICE,
       number,
       client_id: String(clientId),
-      // Early enough that every due date under test is still on or after it —
-      // the service (correctly) refuses a due date before the issue date.
       issued_on: "2026-04-01",
       due_on: due,
     });
@@ -137,10 +135,10 @@ describe("AR aging", () => {
     const ctx = setup();
     const { client } = clientAndProject(ctx);
     const today = "2026-08-01";
-    sentInvoice(ctx, client.id, "A", "2026-09-01"); // not yet due
-    sentInvoice(ctx, client.id, "B", "2026-07-20"); // 12 days late
-    sentInvoice(ctx, client.id, "C", "2026-06-20"); // 42 days late
-    sentInvoice(ctx, client.id, "D", "2026-05-01"); // 92 days late
+    sentInvoice(ctx, client.id, "A", "2026-09-01");
+    sentInvoice(ctx, client.id, "B", "2026-07-20");
+    sentInvoice(ctx, client.id, "C", "2026-06-20");
+    sentInvoice(ctx, client.id, "D", "2026-05-01");
 
     const aging = ctx.store.arAging(today);
     const byBucket = Object.fromEntries(aging.map((b) => [b.bucket, b.n]));
@@ -246,13 +244,13 @@ describe("capacity and bench", () => {
     expect(grid).toHaveLength(8);
     expect(grid[0]?.pct).toBe(80);
     expect(grid[1]?.pct).toBe(80);
-    expect(grid[2]?.pct).toBe(0); // assignment ended
+    expect(grid[2]?.pct).toBe(0);
   });
 
   test("mondayOf normalises any day to its week start", () => {
-    expect(mondayOf("2026-07-08")).toBe("2026-07-06"); // Wednesday
-    expect(mondayOf("2026-07-06")).toBe("2026-07-06"); // Monday
-    expect(mondayOf("2026-07-12")).toBe("2026-07-06"); // Sunday
+    expect(mondayOf("2026-07-08")).toBe("2026-07-06");
+    expect(mondayOf("2026-07-06")).toBe("2026-07-06");
+    expect(mondayOf("2026-07-12")).toBe("2026-07-06");
   });
 });
 
@@ -272,7 +270,6 @@ describe("project economics", () => {
       base_monthly_minor: "100,000",
       currency: "USD",
     });
-    // Half her time on this project for July.
     ctx.delivery.addAssignment(project.id, {
       employee_id: String(emp.id),
       allocation_pct: "50",
@@ -281,10 +278,9 @@ describe("project economics", () => {
 
     const cycle = ctx.payroll.createCycle({ period_month: "2026-07" });
     ctx.payroll.generate(cycle.id);
-    ctx.payroll.setStatus(cycle.id, "approved"); // finalises payslips
+    ctx.payroll.setStatus(cycle.id, "approved");
 
     const pnl = ctx.economics.projectPnl(project.id, "2026-07");
-    // 50% of a 10,000,000-minor payslip; the other half is bench, not charged here.
     expect(pnl.costMinor).toBe(5_000_000);
   });
 
@@ -309,7 +305,7 @@ describe("project economics", () => {
       start_on: "2026-01-01",
     });
     const cycle = ctx.payroll.createCycle({ period_month: "2026-07" });
-    ctx.payroll.generate(cycle.id); // left as draft
+    ctx.payroll.generate(cycle.id);
     expect(ctx.economics.projectPnl(project.id, "2026-07").costMinor).toBe(0);
   });
 
@@ -332,7 +328,7 @@ describe("project economics", () => {
 
   test("margin is withheld rather than fabricated across currencies", () => {
     const ctx = setup();
-    const { client, project } = clientAndProject(ctx); // project is USD
+    const { client, project } = clientAndProject(ctx);
     const emp = ctx.employees.create({
       code: "E1",
       full_name: "Ayesha",
@@ -343,7 +339,7 @@ describe("project economics", () => {
     ctx.employees.addCompensation(emp.id, {
       effective_from: "2024-01-01",
       base_monthly_minor: "300,000",
-      currency: "PKR", // paid in rupees
+      currency: "PKR",
     });
     ctx.delivery.addAssignment(project.id, {
       employee_id: String(emp.id),
@@ -362,7 +358,7 @@ describe("project economics", () => {
 
     const pnl = ctx.economics.projectPnl(project.id, "2026-07");
     expect(pnl.costCurrency).toBe("PKR");
-    expect(pnl.marginMinor).toBeNull(); // no invented conversion
+    expect(pnl.marginMinor).toBeNull();
   });
 
   test("collected only counts paid invoices", () => {

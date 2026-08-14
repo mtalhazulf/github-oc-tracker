@@ -125,7 +125,7 @@ export function createWebhookRoutes(
   function knownInstallationId(payload: Record<string, unknown>): number | null {
     const inst = payload.installation as { id?: number } | undefined;
     if (typeof inst?.id !== "number") return null;
-    return store.getInstallation(inst.id) ? inst.id : inst.id; // trust signed payloads
+    return inst.id;
   }
 
   function refreshRepoFromPayload(
@@ -286,7 +286,6 @@ export function createWebhookRoutes(
       return { ok: true };
     }
 
-    // renamed / transferred / edited / archived / unarchived / (un)privatized
     if (tracked) {
       refreshRepoFromPayload(r, installationId ?? tracked.installation_id);
       record("ok", `repository ${action ?? "updated"}`);

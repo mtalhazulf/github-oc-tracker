@@ -2,13 +2,6 @@ import { ValidationError, type FieldErrors } from "./errors.ts";
 import { isIsoDate } from "./period.ts";
 import { toMinor } from "./money.ts";
 
-/**
- * A ~120-line validation kernel, deliberately not zod.
- *
- * It collects *every* field error in one pass rather than throwing on the first,
- * because both surfaces need the whole set at once: the JSON API returns them as
- * `error.fields`, and the HTMX form re-renders with a message under each input.
- */
 export class Validator {
   private readonly errors: FieldErrors = {};
 
@@ -21,7 +14,6 @@ export class Validator {
   }
 
   private fail(field: string, message: string): void {
-    // First error per field wins — it is the most specific one.
     if (!(field in this.errors)) this.errors[field] = message;
   }
 
@@ -42,7 +34,6 @@ export class Validator {
     return value === "" ? null : value;
   }
 
-  /** A URL-safe short code (employee/client/project identifiers). */
   code(field: string, opts: { label: string; required?: boolean } = { label: field }): string {
     const value = this.text(field, { ...opts, max: 32 });
     if (value !== "" && !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value)) {
@@ -101,7 +92,6 @@ export class Validator {
     return value;
   }
 
-  /** Money in minor units. Re-uses the string parser so 0.1 never becomes 10.000000000000002. */
   money(field: string, opts: { label: string; required?: boolean; min?: number }): number | null {
     const value = this.raw(field);
     if (value === "") {
@@ -135,7 +125,6 @@ export class Validator {
     return value === "1" || value === "true" || value === "on" || value === "yes";
   }
 
-  /** Record a rule that spans several fields (e.g. exit date before join date). */
   check(condition: boolean, field: string, message: string): void {
     if (!condition) this.fail(field, message);
   }
@@ -148,7 +137,6 @@ export class Validator {
     return { ...this.errors };
   }
 
-  /** Throw everything collected so far, or return `value` unchanged. */
   done<T>(value: T): T {
     if (this.invalid) throw new ValidationError(undefined, this.fieldErrors);
     return value;

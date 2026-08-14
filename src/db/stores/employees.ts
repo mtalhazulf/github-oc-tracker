@@ -170,15 +170,12 @@ export function createEmployeeStore(db: Database) {
       db.query("DELETE FROM employees WHERE id = ?").run(id);
     },
 
-    // ---- compensation (append-only, effective-dated) ----
-
     listCompensation(employeeId: number): CompensationRow[] {
       return db
         .query("SELECT * FROM employee_compensation WHERE employee_id = ? ORDER BY effective_from DESC")
         .all(employeeId) as CompensationRow[];
     },
 
-    /** The row in force on `onDate` — not the newest row. */
     compensationAsOf(employeeId: number, onDate: string): CompensationRow | null {
       return (
         (db
@@ -217,16 +214,12 @@ export function createEmployeeStore(db: Database) {
       db.query("DELETE FROM employee_compensation WHERE id = ?").run(id);
     },
 
-    // ---- settings ----
-
     getSettings(): {
       company_name: string;
       base_currency: string;
       payroll_currency: string;
       fiscal_year_start_month: number;
     } {
-      // INSERT OR IGNORE first: db.exec() does not throw when a data statement
-      // inside a migration batch fails, so the singleton row self-heals here.
       db.query("INSERT OR IGNORE INTO app_settings (id) VALUES (1)").run();
       return db.query("SELECT * FROM app_settings WHERE id = 1").get() as {
         company_name: string;

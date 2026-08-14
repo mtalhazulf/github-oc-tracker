@@ -4,19 +4,12 @@ import { log } from "../../logger.ts";
 import { currentPrincipal } from "../request-context.ts";
 import { resolveAccess } from "../policy.ts";
 
-/**
- * The single authorisation gate. Every request passes through here, and a route
- * with no policy entry is refused — authorisation cannot be forgotten by
- * omission, only by an explicit (and reviewable) line in `policy.ts`.
- */
 export function rbacMiddleware(): MiddlewareHandler {
   return async (c, next) => {
     const access = resolveAccess(c.req.method, c.req.path);
     const wantsJson = c.req.path.startsWith("/api/");
 
     if (access === null) {
-      // A real 404 also lands here; say "not found" rather than advertising
-      // that some undeclared route exists.
       log.warn("denied: no policy entry", { method: c.req.method, path: c.req.path });
       return wantsJson
         ? c.json({ error: { code: "not_found", message: "No such endpoint." } }, 404)

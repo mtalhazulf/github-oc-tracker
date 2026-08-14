@@ -131,7 +131,6 @@ describe("effective-dated compensation", () => {
 
     expect(store.compensationAsOf(emp.id, "2026-07-31")?.base_monthly_minor).toBe(20_000_000);
     expect(store.compensationAsOf(emp.id, "2026-08-01")?.base_monthly_minor).toBe(30_000_000);
-    // Before any record exists there is nothing in force.
     expect(store.compensationAsOf(emp.id, "2023-12-31")).toBeNull();
   });
 

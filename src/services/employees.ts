@@ -6,7 +6,6 @@ import { validator } from "../domain/validate.ts";
 const EMPLOYMENT_TYPES = ["full_time", "part_time", "contract", "intern"] as const;
 const STATUSES = ["active", "on_leave", "notice", "exited"] as const;
 
-/** Parse and validate a create/edit form body into a storable employee. */
 export function parseEmployee(body: Record<string, unknown>): EmployeeInput {
   const v = validator(body);
   const code = v.code("code", { label: "Employee code", required: true });
@@ -61,7 +60,6 @@ export function createEmployeeService(store: Store) {
       assertCodeFree(input.code);
       const id = store.tx(() => {
         const newId = store.insertEmployee(input);
-        // A work email is an identity: the person's commits almost certainly carry it.
         if (input.workEmail && !store.findIdentity("email", input.workEmail)) {
           store.insertIdentity({
             employeeId: newId,
@@ -98,11 +96,6 @@ export function createEmployeeService(store: Store) {
       return updated;
     },
 
-    /**
-     * Hard delete, allowed only with no dependents. Payroll history must survive
-     * an employee record being removed, so the schema RESTRICTs it and this
-     * turns the raw constraint into an explanation.
-     */
     remove(id: number): void {
       const existing = store.getEmployee(id);
       if (!existing) throw new NotFoundError("That employee");
@@ -162,7 +155,6 @@ export function createEmployeeService(store: Store) {
       store.deleteCompensation(compensationId);
     },
 
-    /** Adopt an avatar already present on the employee's own commits. */
     refreshAvatar(employeeId: number): void {
       const employee = store.getEmployee(employeeId);
       if (!employee || employee.avatar_url) return;

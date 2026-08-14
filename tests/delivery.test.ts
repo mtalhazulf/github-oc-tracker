@@ -221,7 +221,6 @@ describe("project ↔ repositories (many to many)", () => {
 
     const rollup = store.commitsByProject(0);
     const total = rollup.reduce((sum, row) => sum + row.commits, 0);
-    // 4 commits exist; a naive per-project sum would report 7.
     expect(total).toBe(4);
     expect(store.countCommits()).toBe(4);
   });
@@ -309,7 +308,7 @@ describe("project activity and contributors", () => {
 
     const activity = store.projectActivity(project.id, { sinceTs: now - 86_400, beforeTs: now + 10 });
     expect(activity).toHaveLength(2);
-    expect(activity[0]?.repo_full_name).toBe("acme/web"); // newest first
+    expect(activity[0]?.repo_full_name).toBe("acme/web");
     expect(activity.find((a) => a.sha === "a")?.employee_name).toBe("Alice A");
     expect(activity.find((a) => a.sha === "b")?.employee_id).toBeNull();
 

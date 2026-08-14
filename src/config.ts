@@ -27,13 +27,10 @@ export interface Config {
   port: number;
   host: string;
   dbPath: string;
-  /** External base URL of this deployment (needed for webhooks / GitHub App). */
   baseUrl: string;
   githubToken: string | undefined;
   githubApiUrl: string;
-  /** GitHub web UI base, derived from the API URL unless overridden. */
   githubWebUrl: string;
-  /** Secret for manually configured webhooks (repo/org → Settings → Webhooks). */
   webhookSecret: string | undefined;
   syncIntervalMinutes: number;
   syncConcurrency: number;
@@ -68,7 +65,6 @@ export function loadConfig(): Config {
 
   const port = int("PORT", 3000, 1, 65535);
   const githubApiUrl = str("GITHUB_API_URL", "https://api.github.com").replace(/\/+$/, "");
-  // api.github.com → github.com; GHE https://host/api/v3 → https://host
   const derivedWebUrl = githubApiUrl === "https://api.github.com"
     ? "https://github.com"
     : githubApiUrl.replace(/\/api\/v3$/, "");

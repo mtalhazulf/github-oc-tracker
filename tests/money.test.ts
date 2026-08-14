@@ -5,7 +5,7 @@ import { fmtMoney, prorate, toInput, toMinor } from "../src/domain/money.ts";
 describe("toMinor", () => {
   test("parses formatted input without float error", () => {
     expect(toMinor("45,000.00")).toBe(4_500_000);
-    expect(toMinor("0.1")).toBe(10); // 0.1 * 100 === 10.000000000000002 in floats
+    expect(toMinor("0.1")).toBe(10);
     expect(toMinor("0.01")).toBe(1);
     expect(toMinor("300000")).toBe(30_000_000);
     expect(toMinor(" 2 500.50 ")).toBe(250_050);
@@ -16,7 +16,7 @@ describe("toMinor", () => {
     expect(() => toMinor("")).toThrow(ValidationError);
     expect(() => toMinor("abc")).toThrow(ValidationError);
     expect(() => toMinor("45.000,00")).toThrow(ValidationError);
-    expect(() => toMinor("1.005")).toThrow(ValidationError); // silent truncation would lose money
+    expect(() => toMinor("1.005")).toThrow(ValidationError);
   });
 
   test("round-trips through toInput", () => {

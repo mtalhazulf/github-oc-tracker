@@ -13,8 +13,8 @@ import {
 describe("date shapes", () => {
   test("accepts real dates and rejects lookalikes", () => {
     expect(isIsoDate("2024-02-01")).toBe(true);
-    expect(isIsoDate("2024-02-29")).toBe(true); // leap year
-    expect(isIsoDate("2026-02-29")).toBe(false); // not a leap year
+    expect(isIsoDate("2024-02-29")).toBe(true);
+    expect(isIsoDate("2026-02-29")).toBe(false);
     expect(isIsoDate("2024-13-01")).toBe(false);
     expect(isIsoDate("01/02/2024")).toBe(false);
     expect(isIsoDate("2024-2-1")).toBe(false);

@@ -451,7 +451,6 @@ export function PayslipPage({
   );
 }
 
-/** Bare printable payslip — no navigation, no chrome. */
 export function PayslipPrint({
   payslip,
   items,

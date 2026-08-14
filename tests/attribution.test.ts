@@ -72,7 +72,6 @@ describe("commit → employee attribution", () => {
     const emp = makeEmployee(employees);
     identities.add(emp.id, "login", "ayeshak");
 
-    // The whole point: 2, not 1. Reversed operands would silently return 1.
     expect(store.getEmployee(emp.id)?.commit_count).toBe(2);
   });
 
@@ -84,7 +83,6 @@ describe("commit → employee attribution", () => {
       commit("b", { login: "someone-else", email: "other@house.pk" }),
     ]);
     const emp = makeEmployee(employees);
-    // Both identities point at the same person and the same commit.
     identities.add(emp.id, "login", "ayeshak");
     identities.add(emp.id, "email", "ayesha@house.pk");
 
@@ -180,7 +178,6 @@ describe("suggestions", () => {
     const repo = seedRepo(store);
     const now = Math.floor(Date.now() / 1000);
     store.insertCommits(repo, [commit("a", { email: "ayesha@house.pk", ts: now - 50 })]);
-    // create() already maps the work email, so remove it to test suggest() alone.
     const emp = makeEmployee(employees, { work_email: "ayesha@house.pk" });
     for (const identity of store.listIdentities(emp.id)) identities.remove(emp.id, identity.id);
 

@@ -23,10 +23,6 @@ export interface ManifestAppResult {
   htmlUrl: string;
 }
 
-/**
- * GitHub App integration: created via the app-manifest flow, authenticated with
- * an RS256 app JWT, acting on repositories through per-installation tokens.
- */
 export class GitHubAppService {
   private tokenCache = new Map<number, { token: string; expiresAt: number }>();
   private clients = new Map<number, GitHubClient>();
@@ -47,7 +43,6 @@ export class GitHubAppService {
     return this.app !== null;
   }
 
-  /** Short-lived RS256 JWT identifying the app itself. */
   appJwt(app: GithubAppRow = this.mustApp()): string {
     const now = Math.floor(Date.now() / 1000);
     const header = b64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
@@ -60,7 +55,6 @@ export class GitHubAppService {
     return `${header}.${payload}.${signature}`;
   }
 
-  /** Exchange an app-manifest `code` for permanent app credentials and store them. */
   async convertManifestCode(code: string): Promise<ManifestAppResult> {
     const res = await this.fetchFn(
       `${config.githubApiUrl}/app-manifests/${encodeURIComponent(code)}/conversions`,
@@ -102,7 +96,6 @@ export class GitHubAppService {
     return result;
   }
 
-  /** The app-manifest JSON posted to GitHub's "create app from manifest" endpoint. */
   buildManifest(): Record<string, unknown> {
     return {
       name: `oc-tracker-${randomBytes(3).toString("hex")}`,
@@ -115,7 +108,6 @@ export class GitHubAppService {
     };
   }
 
-  /** Where the manifest form must POST: personal account or organization scope. */
   manifestTargetUrl(org: string | undefined, state: string): string {
     const base = org
       ? `${config.githubWebUrl}/organizations/${encodeURIComponent(org)}/settings/apps/new`
@@ -123,7 +115,6 @@ export class GitHubAppService {
     return `${base}?state=${encodeURIComponent(state)}`;
   }
 
-  /** Cached installation access token (~1h lifetime, refreshed 60s early). */
   async installationToken(installationId: number): Promise<string> {
     const cached = this.tokenCache.get(installationId);
     const now = Math.floor(Date.now() / 1000);
@@ -155,7 +146,6 @@ export class GitHubAppService {
     return raw.token;
   }
 
-  /** A GitHubClient that authenticates as the given installation. */
   clientFor(installationId: number): GitHubClient {
     let client = this.clients.get(installationId);
     if (!client) {
@@ -168,7 +158,6 @@ export class GitHubAppService {
     return client;
   }
 
-  /** All installations of this app, straight from GitHub (JWT auth). */
   async listAppInstallations(): Promise<
     { id: number; accountLogin: string; accountType: string; suspended: boolean }[]
   > {

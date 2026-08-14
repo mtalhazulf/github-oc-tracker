@@ -1,7 +1,6 @@
 import type { Store } from "../db/store.ts";
 import { ConflictError, NotFoundError, ValidationError } from "../domain/errors.ts";
 
-/** `12345+ayeshak@users.noreply.github.com` → `ayeshak` */
 const NOREPLY_RE = /^(?:\d+\+)?([^@]+)@users\.noreply\.github\.com$/i;
 
 export function githubLoginFromNoreply(email: string): string | null {
@@ -32,7 +31,7 @@ export function createIdentityService(store: Store) {
 
       const existing = store.findIdentity(kind, value);
       if (existing) {
-        if (existing.employee_id === employeeId) return; // already mapped here — no-op
+        if (existing.employee_id === employeeId) return;
         throw new ConflictError(`${value} is already mapped to ${existing.employee_name}.`);
       }
 
@@ -40,7 +39,6 @@ export function createIdentityService(store: Store) {
       this.refreshAvatar(employeeId);
     },
 
-    /** Take an identity from whoever holds it ("Move it here"). */
     move(employeeId: number, kind: "login" | "email", rawValue: string): void {
       const employee = store.getEmployee(employeeId);
       if (!employee) throw new NotFoundError("That employee");
@@ -69,12 +67,6 @@ export function createIdentityService(store: Store) {
       store.deleteIgnoredAuthor(id);
     },
 
-    /**
-     * Two deterministic rules, no fuzzy name matching:
-     *   (a) a commit email that exactly equals an employee's work email
-     *   (b) a GitHub noreply email whose embedded login already maps to someone
-     * Both create identities with source='suggested' so they are auditable.
-     */
     suggest(sinceTs: number): { created: number } {
       let created = 0;
       store.tx(() => {

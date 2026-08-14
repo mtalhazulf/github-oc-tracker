@@ -127,14 +127,12 @@ describe("store", () => {
   test("commitsByHour buckets by UTC hour and honors tz offset", () => {
     const store = freshStore();
     const repoId = seedRepo(store);
-    // 2026-01-05T10:30:00Z (a Monday)
     const ts = Date.UTC(2026, 0, 5, 10, 30) / 1000;
     store.insertCommits(repoId, [commit({ sha: "a", authorTs: ts })]);
 
     const utc = store.commitsByHour({}, 0);
     expect(utc).toEqual([{ hour: 10, n: 1 }]);
 
-    // +05:30 → local hour 16
     const shifted = store.commitsByHour({}, 5.5 * 3600);
     expect(shifted).toEqual([{ hour: 16, n: 1 }]);
   });
@@ -146,7 +144,7 @@ describe("store", () => {
     store.insertCommits(repoId, [
       commit({ sha: "a", authorTs: monday }),
       commit({ sha: "b", authorTs: monday + 60 }),
-      commit({ sha: "c", authorTs: monday + 86400 }), // Tuesday 09:00
+      commit({ sha: "c", authorTs: monday + 86400 }),
     ]);
     const cells = store.punchcard({}, 0);
     expect(cells).toContainEqual({ weekday: 1, hour: 9, n: 2 });
@@ -176,7 +174,7 @@ describe("store", () => {
     ]);
     expect(store.countCommits({ author: "bob" })).toBe(1);
     expect(store.countCommits({ q: "login" })).toBe(1);
-    expect(store.countCommits({ q: "b2" })).toBe(1); // sha prefix
+    expect(store.countCommits({ q: "b2" })).toBe(1);
     expect(store.countCommits({ sinceTs: 150, untilTs: 250 })).toBe(1);
     expect(store.countCommits({ includeMerges: false })).toBe(2);
   });

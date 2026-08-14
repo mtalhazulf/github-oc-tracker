@@ -6,10 +6,9 @@ import { validator } from "../domain/validate.ts";
 
 const STATUSES = ["draft", "sent", "paid", "void"] as const;
 
-/** Monday of the week containing `iso`. */
 export function mondayOf(iso: string): string {
   const date = new Date(`${iso}T00:00:00Z`);
-  const day = date.getUTCDay(); // 0 = Sunday
+  const day = date.getUTCDay();
   const delta = day === 0 ? -6 : 1 - day;
   date.setUTCDate(date.getUTCDate() + delta);
   return date.toISOString().slice(0, 10);
@@ -65,7 +64,6 @@ export function createEconomicsService(store: Store) {
       const note = v.optionalText("note", { label: "Note", max: 500 });
       v.done(null);
 
-      // An invoice belongs to the client's own project, never someone else's.
       let projectId: number | null = projectIdRaw && projectIdRaw > 0 ? projectIdRaw : null;
       if (projectId !== null) {
         const project = store.getProject(projectId);
@@ -110,14 +108,6 @@ export function createEconomicsService(store: Store) {
       store.deleteInvoice(id);
     },
 
-    /**
-     * Project economics for one month.
-     *
-     * Cost is derived from FINAL payslips allocated across assignments — a real
-     * number, not an estimate from a rate nobody filled in. Margin is only shown
-     * when revenue and cost share a currency; otherwise both are reported as-is,
-     * because an unconverted subtraction would be a fabricated number.
-     */
     projectPnl(
       projectId: number,
       period: string,

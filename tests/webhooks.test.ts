@@ -16,7 +16,6 @@ function sign(body: string, secret = SECRET): string {
   return `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`;
 }
 
-/** GitHub API stub: commit listing returns empty pages so queued syncs finish. */
 const stubFetch = (async (input: URL | Request | string) => {
   const url = new URL(String(input instanceof Request ? input.url : input));
   const json = (data: unknown, status = 200) =>
@@ -92,7 +91,7 @@ describe("verifySignature", () => {
 
 describe("webhook endpoint", () => {
   test("rejects when no secret is configured", async () => {
-    const { app } = makeApp(false); // no app row, no WEBHOOK_SECRET env in tests
+    const { app } = makeApp(false);
     const res = await deliver(app, "ping", { zen: "keep it simple" });
     expect(res.status).toBe(503);
   });
@@ -237,7 +236,6 @@ describe("webhook endpoint", () => {
       installation: { id: 555, account: { login: "acme", type: "Organization" } },
     });
     expect(store.listInstallations()).toHaveLength(0);
-    // History and repos are kept, but detached and flagged.
     const after = store.listRepos();
     expect(after).toHaveLength(2);
     expect(after.every((r) => r.installation_id === null)).toBe(true);

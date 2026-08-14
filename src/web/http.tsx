@@ -9,24 +9,17 @@ import {
 
 export const PER_PAGE = 50;
 
-/** Full-document response. */
 export function page(c: Context, el: { toString(): string | Promise<string> }) {
   const body = el.toString();
   if (typeof body === "string") return c.html(`<!DOCTYPE html>${body}`);
   return body.then((s) => c.html(`<!DOCTYPE html>${s}`));
 }
 
-/** HTMX fragment response — no doctype. Takes a status so forms can answer 422. */
 export function partial(c: Context, el: Parameters<Context["html"]>[0], status = 200) {
   if (status !== 200) c.status(status as StatusCode);
   return c.html(el);
 }
 
-/**
- * Raw SQLite constraint messages, translated. This is the backstop for races and
- * for rules the service layer does not pre-check — services throw ValidationError
- * /ConflictError/NotFoundError for everything they can see coming.
- */
 const CONSTRAINT_MESSAGES: [needle: string, message: string][] = [
   ["project_repositories.repo_id", "That repository is already the primary repo for another project."],
   ["employee_identities.kind", "That GitHub login or email is already mapped to someone else."],
@@ -40,7 +33,6 @@ const CONSTRAINT_MESSAGES: [needle: string, message: string][] = [
   ["employee_compensation", "This employee already has a compensation record effective that date."],
 ];
 
-/** One error translator for the whole HTML surface. */
 export function friendlyError(err: unknown): string {
   if (err instanceof AppError) return err.message;
 
@@ -62,7 +54,6 @@ export function friendlyError(err: unknown): string {
   return raw;
 }
 
-/** HTTP status for an error, for both the JSON and HTML surfaces. */
 export function errorStatus(err: unknown): number {
   if (err instanceof AppError) return err.status;
   if (err instanceof GitHubNotFoundError) return 404;

@@ -1,10 +1,5 @@
 @import "tailwindcss";
 
-/*
- * Semantic tokens (light + dark). Chart colors follow the validated
- * reference palette: single-hue blue for series & sequential ramps,
- * text always in ink tokens, hairline grid/axes.
- */
 :root {
   color-scheme: light dark;
 
@@ -20,7 +15,6 @@
   --up: #006300;
   --critical: #d03b3b;
 
-  /* sequential blue ramp (heatmap): near-zero recedes toward the surface */
   --seq-0: #f0efec;
   --seq-1: #cde2fb;
   --seq-2: #9ec5f4;
@@ -78,14 +72,12 @@
   }
 }
 
-/* Visible keyboard focus everywhere (WCAG 2.4.7). */
 :focus-visible {
   outline: 2px solid var(--series-1);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* Global request progress bar (Doherty threshold — immediate feedback). */
 #loading-bar {
   position: fixed;
   top: 0;

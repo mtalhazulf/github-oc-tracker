@@ -30,7 +30,6 @@ function StatusDot({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
-/** The manifest hand-off form returned by GET /settings/github-app/new. */
 export function ManifestForm({
   targetUrl,
   manifestJson,

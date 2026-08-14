@@ -4,7 +4,6 @@ import type { FieldErrors } from "../../domain/errors.ts";
 import { ROLES } from "../../domain/rbac.ts";
 import { Badge, Card, Field, FormError, PageHeader, Select, Table, TextInput, When, btn } from "./ui/kit.tsx";
 
-/** Standalone shell for pages shown before a session exists. */
 function AuthShell({ title, children }: { title: string; children: unknown }) {
   return (
     <html lang="en">

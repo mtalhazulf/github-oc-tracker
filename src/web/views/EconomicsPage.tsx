@@ -360,7 +360,6 @@ export function CapacityPage({
   );
 }
 
-/** Project economics panel, embedded on project detail. */
 export function ProjectPnl({
   pnl,
   period,
@@ -409,9 +408,6 @@ export function ProjectPnl({
           <dt class="font-medium text-ink">Margin</dt>
           <dd class="tabular-nums font-semibold text-ink">
             {pnl.costCurrency === null ? (
-              // Cost of 0 is almost never true — it means payroll for this
-              // period has not been finalised. Reporting a 100% margin from a
-              // missing number would be worse than reporting nothing.
               <span class="text-xs font-normal text-ink-2">Approve {period} payroll to see margin</span>
             ) : pnl.marginMinor === null ? (
               <span class="text-xs font-normal text-ink-2">

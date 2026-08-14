@@ -6,13 +6,6 @@ import { AppError } from "../domain/errors.ts";
 import type { Role } from "../domain/rbac.ts";
 import { setPrincipal } from "../web/request-context.ts";
 
-/**
- * A deliberately small JSON surface: read-mostly, for the owner's own scripts
- * and a future mobile or CLI consumer. It is NOT what "separate UI from API"
- * means here — that separation is the services layer, which both this and the
- * HTMX surface call in-process. The UI never makes HTTP calls to these routes.
- */
-
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
 
@@ -39,14 +32,6 @@ function fail(c: Context, status: number, code: string, message: string, fields?
   return c.json({ error: { code, message, ...(fields ? { fields } : {}) } }, status as 400);
 }
 
-/**
- * Resolve a bearer token into the request's principal.
- *
- * This only *establishes identity*. Authorisation is the single policy gate in
- * `middleware/rbac.ts`, which runs next and treats a token-derived principal
- * exactly like a cookie-derived one — so the API can never drift from the
- * screens it mirrors.
- */
 export function apiAuth(store: Store) {
   return async (c: Context, next: () => Promise<void>) => {
     const header = c.req.header("Authorization") ?? "";
@@ -65,8 +50,6 @@ export function apiAuth(store: Store) {
       id: user?.id ?? 0,
       email: user?.email ?? `token:${row.prefix}`,
       name: user?.name ?? row.name,
-      // A token with no user behind it acts as admin, never owner: it must not
-      // be able to create accounts or change roles.
       role: (user?.role ?? "admin") as Role,
       employeeId: user?.employee_id ?? null,
     };
@@ -91,8 +74,6 @@ export function createApiRoutes(store: Store): Hono {
     }
     return fail(c, 500, "internal", "Something went wrong.");
   });
-
-  // ---- delivery ----
 
   app.get("/api/v1/clients", (c) => {
     const { limit, offset } = paging(c);
@@ -133,8 +114,6 @@ export function createApiRoutes(store: Store): Hono {
     });
   });
 
-  // ---- people ----
-
   app.get("/api/v1/employees", (c) => {
     const { limit, offset } = paging(c);
     const all = store.listEmployees({
@@ -142,7 +121,6 @@ export function createApiRoutes(store: Store): Hono {
       department: c.req.query("department") ?? undefined,
       q: c.req.query("q") ?? undefined,
     });
-    // Employee rows carry no salary, so people.view is the right gate.
     return ok(c, all.slice(offset, offset + limit), { limit, offset, total: all.length });
   });
 
@@ -153,8 +131,6 @@ export function createApiRoutes(store: Store): Hono {
     const sinceTs = Math.floor(Date.now() / 1000) - months * 30 * 86_400;
     return ok(c, store.employeeContribution(id, sinceTs));
   });
-
-  // ---- code ----
 
   app.get("/api/v1/commits", (c) => {
     const { limit, offset } = paging(c);
@@ -170,8 +146,6 @@ export function createApiRoutes(store: Store): Hono {
       total: store.countCommits(filters),
     });
   });
-
-  // ---- money (admin only) ----
 
   app.get("/api/v1/payroll/cycles", (c) => {
     return ok(c, store.listCycles());

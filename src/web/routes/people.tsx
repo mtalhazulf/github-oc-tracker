@@ -76,8 +76,6 @@ export function createPeopleRoutes(
     };
   }
 
-  // ---- list ----
-
   app.get("/employees", (c) => {
     const { filters, rows } = listFor(c);
     return page(
@@ -97,8 +95,6 @@ export function createPeopleRoutes(
     const { rows } = listFor(c);
     return partial(c, <EmployeesTable employees={rows} />);
   });
-
-  // ---- create ----
 
   app.get("/employees/new", (c) =>
     page(
@@ -129,8 +125,6 @@ export function createPeopleRoutes(
     }
   });
 
-  // ---- detail ----
-
   app.get("/employees/:id", (c) => {
     const id = Number(c.req.param("id"));
     const employee = store.getEmployee(id);
@@ -149,8 +143,6 @@ export function createPeopleRoutes(
       </Layout>,
     );
   });
-
-  // ---- edit ----
 
   app.get("/employees/:id/edit", (c) => {
     const employee = store.getEmployee(Number(c.req.param("id")));
@@ -210,8 +202,6 @@ export function createPeopleRoutes(
     }
   });
 
-  // ---- identities ----
-
   app.post("/employees/:id/identities", async (c) => {
     const id = Number(c.req.param("id"));
     const employee = store.getEmployee(id);
@@ -246,8 +236,6 @@ export function createPeopleRoutes(
     return partial(c, <IdentityPanel employee={employee} identities={store.listIdentities(id)} error={error} />);
   });
 
-  // ---- compensation ----
-
   app.post("/employees/:id/compensation", async (c) => {
     const id = Number(c.req.param("id"));
     const employee = store.getEmployee(id);
@@ -280,8 +268,6 @@ export function createPeopleRoutes(
     return partial(c, <CompensationPanel employee={employee} compensation={store.listCompensation(id)} error={error} />);
   });
 
-  // ---- author mapping inbox ----
-
   function inbox(c: Context, suggested?: number) {
     return page(
       c,
@@ -309,7 +295,6 @@ export function createPeopleRoutes(
     const login = String(body.login ?? "").trim();
     const email = String(body.email ?? "").trim();
     if (Number.isFinite(employeeId) && employeeId > 0) {
-      // Map both signals the author was seen under, so the row leaves the inbox.
       if (login) identities.move(employeeId, "login", login);
       if (email) identities.move(employeeId, "email", email);
     }

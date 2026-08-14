@@ -123,8 +123,6 @@ const SELECT_PROJECT = `
 
 export function createDeliveryStore(db: Database) {
   return {
-    // ---- clients ----
-
     listClients(opts: { q?: string; status?: string; includeArchived?: boolean } = {}): ClientRow[] {
       const where: string[] = [];
       const params: string[] = [];
@@ -225,8 +223,6 @@ export function createDeliveryStore(db: Database) {
       db.query("DELETE FROM clients WHERE id = ?").run(id);
     },
 
-    // ---- projects ----
-
     listProjects(
       opts: { q?: string; status?: string; kind?: string; clientId?: number; includeArchived?: boolean } = {},
     ): ProjectRow[] {
@@ -325,8 +321,6 @@ export function createDeliveryStore(db: Database) {
       db.query("DELETE FROM projects WHERE id = ?").run(id);
     },
 
-    // ---- project ↔ repositories (many-to-many) ----
-
     listProjectRepos(projectId: number): ProjectRepoRow[] {
       return db
         .query(
@@ -341,7 +335,6 @@ export function createDeliveryStore(db: Database) {
         .all(projectId) as ProjectRepoRow[];
     },
 
-    /** Which other projects hold this repo — powers the "shared with" chip. */
     projectsForRepo(repoId: number): { project_id: number; code: string; name: string; is_primary: number }[] {
       return db
         .query(
@@ -362,7 +355,6 @@ export function createDeliveryStore(db: Database) {
       db.query("DELETE FROM project_repositories WHERE project_id = ? AND repo_id = ?").run(projectId, repoId);
     },
 
-    /** Move the single primary link for a repo to this project. */
     setPrimaryRepo(projectId: number, repoId: number): void {
       db.query("UPDATE project_repositories SET is_primary = 0 WHERE repo_id = ?").run(repoId);
       db.query("UPDATE project_repositories SET is_primary = 1 WHERE repo_id = ? AND project_id = ?").run(
@@ -371,7 +363,6 @@ export function createDeliveryStore(db: Database) {
       );
     },
 
-    /** Tracked repositories not yet linked to this project — the attach picker. */
     linkableRepos(projectId: number): { id: number; full_name: string; linked_elsewhere: number }[] {
       return db
         .query(
@@ -384,7 +375,6 @@ export function createDeliveryStore(db: Database) {
         .all(projectId) as { id: number; full_name: string; linked_elsewhere: number }[];
     },
 
-    /** Repos with commits but no project — activity silently missing from rollups. */
     unlinkedRepoStats(): { repos: number; commits: number } {
       return db
         .query(
@@ -396,8 +386,6 @@ export function createDeliveryStore(db: Database) {
         )
         .get() as { repos: number; commits: number };
     },
-
-    // ---- team ----
 
     listAssignments(projectId: number): AssignmentRow[] {
       return db
@@ -452,14 +440,6 @@ export function createDeliveryStore(db: Database) {
       db.query("DELETE FROM project_assignments WHERE id = ?").run(id);
     },
 
-    // ---- activity ----
-
-    /**
-     * Commits across every repo of a project, newest first.
-     * Keyset (`before`), never OFFSET: a project spans several repos, so the
-     * per-repo index cannot satisfy the global ORDER BY and OFFSET would rebuild
-     * a temp B-tree over the whole history on every page.
-     */
     projectActivity(
       projectId: number,
       opts: { sinceTs: number; beforeTs: number; limit?: number },
@@ -502,7 +482,6 @@ export function createDeliveryStore(db: Database) {
       }[];
     },
 
-    /** Contributor breakdown for a project over a window. */
     projectContributors(
       projectId: number,
       sinceTs: number,
@@ -523,7 +502,6 @@ export function createDeliveryStore(db: Database) {
         .all(sinceTs, projectId) as { employee_id: number | null; name: string; commits: number }[];
     },
 
-    /** Commits per day for a project, for the sparkline on project detail. */
     projectCommitsPerDay(
       projectId: number,
       sinceTs: number,
@@ -540,7 +518,6 @@ export function createDeliveryStore(db: Database) {
         .all(tzOffsetSeconds, sinceTs, projectId) as { day: string; n: number }[];
     },
 
-    /** Company-wide rollup with each commit counted exactly once. */
     commitsByProject(sinceTs: number): { project_id: number; code: string; name: string; commits: number }[] {
       return db
         .query(

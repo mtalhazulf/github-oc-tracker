@@ -28,7 +28,6 @@ const dateFmt = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 });
 
-/** Format an epoch timestamp in the configured display timezone. */
 export function fmtDateTime(ts: number): string {
   return `${dateTimeFmt.format(new Date((ts + tzOffsetSeconds) * 1000))} ${tzLabel}`;
 }
@@ -51,7 +50,6 @@ export function timeAgo(ts: number, now = Math.floor(Date.now() / 1000)): string
   return `${Math.floor(mo / 12)}y ago`;
 }
 
-/** 1,284 / 12.9K / 4.2M — compact numbers for stat tiles. */
 export function compact(n: number): string {
   if (n < 10_000) return n.toLocaleString("en-US");
   if (n < 1_000_000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K`;
@@ -60,7 +58,6 @@ export function compact(n: number): string {
 
 export const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/** Display rows Monday-first; values are SQLite %w indexes (0 = Sunday). */
 export const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 export function hourLabel(h: number): string {

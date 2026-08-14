@@ -28,11 +28,6 @@ interface NavGroup {
   items: NavItem[];
 }
 
-/**
- * Ordered by how often the owner opens it: delivery work daily, money monthly,
- * the GitHub tooling underneath. Items appear here as their phase ships — a nav
- * link to a route that 404s is worse than no link.
- */
 export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Overview",
@@ -93,7 +88,6 @@ export function Sidebar({
 
   return (
     <>
-      {/* Mobile bar — the sidebar itself is off-canvas below md. */}
       <header class="flex items-center justify-between border-b border-hairline bg-surface px-4 py-3 md:hidden">
         <a href="/" class="flex items-center gap-2 font-semibold text-ink">
           <span class="inline-flex h-6 w-6 items-center justify-center rounded bg-accent text-xs font-bold text-white">

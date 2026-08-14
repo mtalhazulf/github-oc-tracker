@@ -1,18 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { IdentityRow } from "./employees.ts";
 
-/**
- * Every commit↔identity join in the app lives in this file, because of one rule:
- *
- *     ALWAYS:  ei.value = c.author_login      -- identity column on the LEFT
- *     NEVER:   c.author_login = ei.value
- *
- * SQLite takes the collation of the LEFT operand's declared column, and
- * `employee_identities.value` is the only side declared COLLATE NOCASE. Reversed,
- * the comparison resolves to BINARY and silently returns half the commits for
- * anyone whose GitHub login case varies — no error, just a wrong number.
- */
-
 export interface UnmappedAuthor {
   author: string;
   login: string | null;
@@ -62,7 +50,6 @@ export function createAttributionStore(db: Database) {
       return Number(res.lastInsertRowid);
     },
 
-    /** Re-point an existing identity at another employee ("Move it here"). */
     moveIdentity(kind: "login" | "email", value: string, employeeId: number): void {
       db.query("UPDATE employee_identities SET employee_id = ?, source = 'manual' WHERE kind = ? AND value = ?").run(
         employeeId,
@@ -75,7 +62,6 @@ export function createAttributionStore(db: Database) {
       db.query("DELETE FROM employee_identities WHERE id = ?").run(id);
     },
 
-    /** Newest avatar seen for any of an employee's identities. Free avatars, zero storage. */
     avatarForEmployee(employeeId: number): string | null {
       const row = db
         .query(
@@ -89,8 +75,6 @@ export function createAttributionStore(db: Database) {
         .get(employeeId) as { url: string } | undefined;
       return row?.url ?? null;
     },
-
-    // ---- ignore list ----
 
     listIgnoredAuthors(): { id: number; kind: string; value: string; note: string | null }[] {
       return db.query("SELECT * FROM ignored_authors ORDER BY kind, value").all() as {
@@ -113,13 +97,6 @@ export function createAttributionStore(db: Database) {
       db.query("DELETE FROM ignored_authors WHERE id = ?").run(id);
     },
 
-    // ---- the mapping inbox ----
-
-    /**
-     * Aggregate to ~100 author rows FIRST, then filter. The naive shape (join the
-     * attribution view, then group) gets slower the more the feature is used —
-     * exactly the screen where a new user spends their first hour.
-     */
     unmappedAuthors(sinceTs: number, limit = 50): UnmappedAuthor[] {
       return db
         .query(
@@ -168,7 +145,6 @@ export function createAttributionStore(db: Database) {
       return row.n;
     },
 
-    /** Rule (a): a commit email that exactly equals an employee's work email. */
     suggestEmailMatches(): { employee_id: number; value: string }[] {
       return db
         .query(
@@ -181,7 +157,6 @@ export function createAttributionStore(db: Database) {
         .all() as { employee_id: number; value: string }[];
     },
 
-    /** Distinct commit emails not yet mapped — used for the noreply-login rule. */
     unmappedEmails(sinceTs: number): string[] {
       return (
         db
@@ -195,9 +170,6 @@ export function createAttributionStore(db: Database) {
       ).map((r) => r.email);
     },
 
-    // ---- contribution ----
-
-    /** Commits by an employee, grouped by project (project columns are null until P2). */
     employeeContribution(employeeId: number, sinceTs: number): ContributionRow[] {
       const hasProjects = db
         .query("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'view' AND name = 'v_repo_project'")
@@ -234,7 +206,6 @@ export function createAttributionStore(db: Database) {
         .all(sinceTs, employeeId) as ContributionRow[];
     },
 
-    /** Recent commits attributed to one employee. */
     employeeCommits(employeeId: number, limit = 20): {
       sha: string;
       message: string;
@@ -261,7 +232,6 @@ export function createAttributionStore(db: Database) {
       }[];
     },
 
-    /** Sanity check used by tests: the view must never fan out. */
     attributionRowCount(): { view_rows: number; commit_rows: number } {
       return db
         .query(

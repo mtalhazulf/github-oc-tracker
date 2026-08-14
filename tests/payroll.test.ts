@@ -111,7 +111,7 @@ describe("payslip generation", () => {
     const { store, payroll, employees } = setup();
     const emp = hire(employees);
     pay(employees, emp.id, "200,000", "2024-01-01");
-    pay(employees, emp.id, "300,000", "2026-08-01"); // a raise AFTER July
+    pay(employees, emp.id, "300,000", "2026-08-01");
     const { cycleId } = generateJuly(store, payroll);
     expect(store.listPayslips(cycleId)[0]?.base_monthly_minor).toBe(20_000_000);
   });
@@ -319,16 +319,15 @@ describe("tax slabs", () => {
       fiscalYear: "2026-27",
       lowerAnnualMinor: 60_000_000,
       fixedAnnualMinor: 0,
-      rateBp: 1000, // 10% of the excess
+      rateBp: 1000,
     });
     const emp = hire(employees);
-    pay(employees, emp.id, "100,000"); // 1,200,000 a year
+    pay(employees, emp.id, "100,000");
     const { cycleId } = generateJuly(store, payroll);
     const slip = store.listPayslips(cycleId)[0];
     const items = store.listItems(slip?.id ?? 0);
     expect(items).toHaveLength(1);
     expect(items[0]?.code).toBe("tax");
-    // 10% of (1,200,000 - 600,000) = 60,000 a year = 5,000 a month
     expect(items[0]?.amount_minor).toBe(500_000);
     expect(slip?.net_minor).toBe(10_000_000 - 500_000);
   });

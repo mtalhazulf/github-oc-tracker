@@ -6,7 +6,6 @@ import { isPeriod, periodBounds } from "../domain/period.ts";
 import { computeAnnualTax } from "../domain/tax.ts";
 import { validator } from "../domain/validate.ts";
 
-/** Which fiscal year a period belongs to, given the year's starting month. */
 export function fiscalYearFor(period: string, startMonth: number): string {
   const year = Number(period.slice(0, 4));
   const month = Number(period.slice(5, 7));
@@ -47,11 +46,6 @@ export function createPayrollService(store: Store) {
       return mustCycle(id);
     },
 
-    /**
-     * Snapshot payslips for the cycle. Idempotent on a draft (replaces), refused
-     * on anything else — regenerating an approved or paid month would rewrite
-     * history that has already left the building.
-     */
     generate(cycleId: number): { created: number; skipped: { name: string; reason: string }[] } {
       const cycle = mustCycle(cycleId);
       if (cycle.status !== "draft") {
@@ -76,7 +70,6 @@ export function createPayrollService(store: Store) {
           }
           const base = candidate.base_monthly_minor ?? 0;
           const currency = candidate.currency ?? cycle.currency;
-          // A contractor is paid per deliverable: base 0, then an earning line.
           const payableDays = isContract && candidate.compensation_id === null
             ? candidate.period_days
             : candidate.payable_days;
@@ -96,7 +89,6 @@ export function createPayrollService(store: Store) {
             status: "draft",
           });
 
-          // Tax only when the owner has entered slabs for this fiscal year.
           if (slabs.length > 0 && base > 0) {
             const annualTax = computeAnnualTax(base * 12, slabs);
             const monthly = Math.round(annualTax / 12);
@@ -124,7 +116,6 @@ export function createPayrollService(store: Store) {
       const cycle = mustCycle(cycleId);
       const allowed: Record<string, string[]> = {
         draft: ["approved", "cancelled"],
-        // Real payroll gets approved on the 28th and corrected on the 29th.
         approved: ["draft", "paid", "cancelled"],
         paid: [],
         cancelled: ["draft"],
@@ -141,15 +132,12 @@ export function createPayrollService(store: Store) {
       }
       store.tx(() => {
         store.setCycleStatus(cycleId, status);
-        // Approving freezes the payslips as documents.
         if (status === "approved") store.finalizePayslipsForCycle(cycleId);
       });
     },
 
     removeCycle(cycleId: number): void {
       const cycle = mustCycle(cycleId);
-      // Checked inside the delete statement itself: the CASCADE to payslips
-      // would otherwise erase a paid month with no error.
       const deleted = store.deleteCycleIfDraft(cycleId);
       if (deleted === 0) {
         throw new ConflictError(`Only a draft cycle can be deleted — this one is ${cycle.status}.`);
@@ -178,7 +166,6 @@ export function createPayrollService(store: Store) {
       return updated;
     },
 
-    /** Replace the whole item set in one transaction — how a human edits a payslip. */
     replaceItems(payslipId: number, body: Record<string, unknown>): void {
       const payslip = store.getPayslip(payslipId);
       if (!payslip) throw new NotFoundError("That payslip");
@@ -232,8 +219,6 @@ export function createPayrollService(store: Store) {
       }
     },
 
-    // ---- tax slabs ----
-
     addTaxSlab(body: Record<string, unknown>): void {
       const v = validator(body);
       const fiscalYear = v.text("fiscal_year", { label: "Fiscal year", required: true, max: 12 });
@@ -256,7 +241,6 @@ export function createPayrollService(store: Store) {
       store.deleteTaxSlab(id);
     },
 
-    /** CSV for the bank portal and the accountant. */
     cycleCsv(cycleId: number): string {
       const cycle = mustCycle(cycleId);
       const rows = store.listPayslips(cycleId).filter((p) => p.status !== "excluded");
@@ -306,7 +290,6 @@ function toArray(value: unknown): string[] {
   return [String(value)];
 }
 
-/** Excel-safe CSV cell: quote when needed, and neutralise formula injection. */
 export function csvCell(value: string): string {
   let out = value;
   if (/^[=+\-@]/.test(out)) out = `'${out}`;

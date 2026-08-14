@@ -6,11 +6,6 @@ import { ForbiddenError } from "../../domain/errors.ts";
 import { SESSION_COOKIE, tokensMatch, type AuthService, type Principal } from "../../services/auth.ts";
 import { runWithContext } from "../request-context.ts";
 
-/**
- * Routes this middleware does not gate. `/api/` is listed because the JSON API
- * runs its own bearer-token check and must answer 401 with an error body — an
- * HTML redirect to /login is useless to a script and hides the real reason.
- */
 const PUBLIC_PATHS = new Set(["/login", "/logout", "/setup", "/healthz"]);
 const PUBLIC_PREFIXES = ["/webhooks/", "/api/", "/app.css", "/app.js", "/htmx.min.js"];
 
@@ -37,7 +32,6 @@ export function sessionMiddleware(auth: AuthService): MiddlewareHandler {
 
     const path = c.req.path;
 
-    // Before any account exists the only reachable page is /setup.
     if (auth.needsSetup) {
       if (path === "/setup" || isPublic(path)) {
         return runWithContext({ principal, csrfToken }, () => next());
@@ -57,14 +51,6 @@ export function sessionMiddleware(auth: AuthService): MiddlewareHandler {
   };
 }
 
-/**
- * CSRF: double-submit. The session cookie is SameSite=Lax, and every unsafe
- * request must additionally echo the session's token, either as a header
- * (HTMX sends it from hx-headers on <body>) or as a _csrf form field.
- *
- * Exempt: webhooks (HMAC-authenticated by GitHub) and bearer-token API calls,
- * which carry no ambient cookie authority to abuse.
- */
 export function csrfMiddleware(): MiddlewareHandler {
   const UNSAFE = new Set(["POST", "PUT", "PATCH", "DELETE"]);
   return async (c, next) => {
@@ -76,7 +62,7 @@ export function csrfMiddleware(): MiddlewareHandler {
     }
 
     const expected = c.get("csrfToken") as string | undefined;
-    if (!expected) return next(); // no session yet (login, setup)
+    if (!expected) return next();
 
     const header = c.req.header("X-CSRF-Token");
     let supplied = header ?? "";
@@ -85,7 +71,6 @@ export function csrfMiddleware(): MiddlewareHandler {
       if (contentType.includes("form")) {
         const body = await c.req.parseBody({ all: false });
         supplied = String((body as Record<string, unknown>)._csrf ?? "");
-        // parseBody caches on the request, so the route can still read it.
       }
     }
     if (!supplied || !tokensMatch(supplied, expected)) {
@@ -95,7 +80,6 @@ export function csrfMiddleware(): MiddlewareHandler {
   };
 }
 
-/** Route guard: 403 (or an HTMX-friendly message) unless the role allows it. */
 export function requireCapability(capability: Capability): MiddlewareHandler {
   return async (c, next) => {
     const principal = c.get("user") as Principal | undefined;

@@ -6,10 +6,8 @@ export interface ColumnPoint {
 
 interface Props {
   points: ColumnPoint[];
-  /** Slot width per column in px (bar + air). */
   slot?: number;
   height?: number;
-  /** Render every nth x-axis label (1 = all). */
   labelEvery?: number;
   ariaLabel?: string;
 }
@@ -23,7 +21,6 @@ function niceCeil(n: number): number {
   return 10 * mag;
 }
 
-/** Rounded top corners, square baseline — the 4px data-end from the mark spec. */
 function barPath(x: number, yTop: number, w: number, h: number, baseline: number): string {
   const r = Math.min(4, w / 2, h);
   return [
@@ -37,11 +34,6 @@ function barPath(x: number, yTop: number, w: number, h: number, baseline: number
   ].join(" ");
 }
 
-/**
- * Single-series column chart, server-rendered SVG.
- * One hue (--series-1), hairline gridlines, selective labeling: only the
- * peak value gets a direct label; every bar carries a native hover tooltip.
- */
 export function ColumnChart({ points, slot = 22, height = 170, labelEvery = 1, ariaLabel }: Props) {
   const padLeft = 34;
   const padRight = 6;

@@ -4,12 +4,6 @@ import type { RepoRow, Store } from "../db/store.ts";
 import { GitHubClient, NotFoundError, RateLimitError } from "../github/client.ts";
 import type { GitHubAppService } from "../github/app.ts";
 
-/**
- * Coordinates GitHub → SQLite synchronization with a bounded worker pool.
- * A repo is only ever queued once at a time; org syncs re-discover repos first.
- * Repositories granted through a GitHub App installation authenticate with
- * installation tokens; everything else uses the configured PAT.
- */
 export class SyncService {
   private readonly queue: number[] = [];
   private readonly queued = new Set<number>();
@@ -22,7 +16,6 @@ export class SyncService {
     private readonly app?: GitHubAppService,
   ) {}
 
-  /** Pick the client that can actually see this repo. */
   private clientFor(repo: Pick<RepoRow, "installation_id">): GitHubClient {
     if (repo.installation_id !== null && this.app?.isConfigured) {
       return this.app.clientFor(repo.installation_id);
@@ -30,10 +23,8 @@ export class SyncService {
     return this.github;
   }
 
-  /** Add a single repository by "owner/name" and queue its first sync. */
   async addRepo(fullName: string): Promise<{ id: number; inserted: boolean }> {
     const [owner, name] = splitFullName(fullName);
-    // Prefer an app installation covering this owner; fall back to the PAT.
     const installation = this.app?.isConfigured
       ? this.store.findInstallationByLogin(owner)
       : null;
@@ -58,10 +49,6 @@ export class SyncService {
     return result;
   }
 
-  /**
-   * Validate and register an organization (or user account). Repo discovery is
-   * kicked off in the background so large orgs don't block the request.
-   */
   async addOrg(login: string): Promise<{ id: number }> {
     const installation = this.app?.isConfigured ? this.store.findInstallationByLogin(login) : null;
     const client = installation ? this.app!.clientFor(installation.id) : this.github;
@@ -81,11 +68,6 @@ export class SyncService {
     return { id: orgId };
   }
 
-  /**
-   * Register a GitHub App installation (from a webhook or reconciliation):
-   * store it, ensure an organization row exists for the account, and start
-   * tracking the granted repositories.
-   */
   registerInstallation(inst: {
     id: number;
     accountLogin: string;
@@ -106,13 +88,11 @@ export class SyncService {
     });
     this.store.setOrgInstallation(orgId, inst.id);
     this.addInstallationRepos(inst.id, orgId, inst.repos);
-    // Fill in avatar/name/description details in the background.
     this.discoverOrgRepos(orgId).catch((err) =>
       log.error("installation discovery failed", { installation: inst.id, err: errMessage(err) }),
     );
   }
 
-  /** Track repos granted to an installation (webhook payloads carry minimal repo info). */
   addInstallationRepos(
     installationId: number,
     orgId: number | null,
@@ -138,7 +118,6 @@ export class SyncService {
     }
   }
 
-  /** Re-list an org's repositories from GitHub and upsert them locally. */
   async discoverOrgRepos(orgId: number): Promise<number> {
     const org = this.store.getOrg(orgId);
     if (!org) throw new Error(`Organization ${orgId} not found`);
@@ -147,8 +126,6 @@ export class SyncService {
       org.installation_id !== null && this.app?.isConfigured ? org.installation_id : null;
     let count = 0;
     try {
-      // Installation-backed orgs list exactly the repos the app was granted;
-      // PAT-backed orgs list everything the token can see.
       const repoSource =
         installationId !== null
           ? this.app!.clientFor(installationId).listInstallationRepos()
@@ -186,7 +163,6 @@ export class SyncService {
     }
   }
 
-  /** Queue a repo sync; returns false if it was already queued or syncing. */
   queueRepoSync(repoId: number): boolean {
     if (this.queued.has(repoId)) return false;
     this.queued.add(repoId);
@@ -195,7 +171,6 @@ export class SyncService {
     return true;
   }
 
-  /** Queue syncs for every tracked repository (used by the scheduler). */
   queueAll(): number {
     let n = 0;
     for (const repo of this.store.listTrackedRepos()) {
@@ -204,7 +179,6 @@ export class SyncService {
     return n;
   }
 
-  /** Re-discover org repos then queue the org's repositories. */
   async syncOrg(orgId: number): Promise<void> {
     await this.discoverOrgRepos(orgId);
   }
@@ -232,7 +206,6 @@ export class SyncService {
     }
   }
 
-  /** Incrementally sync one repository's commits (default branch). */
   async syncRepo(repoId: number): Promise<void> {
     const repo = this.store.getRepo(repoId);
     if (!repo) return;
@@ -240,8 +213,6 @@ export class SyncService {
     const runId = this.store.startSyncRun(repoId);
     let added = 0;
     try {
-      // Overlap the window by 10 minutes so force-pushes / clock skew don't drop commits;
-      // the (repo_id, sha) unique index dedupes anything re-fetched.
       const maxTs = this.store.maxCommitterTs(repoId);
       const since = maxTs !== null ? new Date((maxTs - 600) * 1000).toISOString() : undefined;
       const limit = config.maxCommitsPerSync;

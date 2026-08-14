@@ -92,8 +92,6 @@ export function createAuthStore(db: Database) {
       db.query("UPDATE users SET last_login_at = unixepoch() WHERE id = ?").run(id);
     },
 
-    // ---- sessions ----
-
     insertSession(input: { id: string; userId: number; csrfToken: string; expiresAt: number }): void {
       db.query("INSERT INTO sessions (id, user_id, csrf_token, expires_at) VALUES (?, ?, ?, ?)").run(
         input.id,
@@ -145,8 +143,6 @@ export function createAuthStore(db: Database) {
       db.query("DELETE FROM sessions WHERE expires_at <= unixepoch()").run();
     },
 
-    // ---- audit ----
-
     insertAudit(input: {
       userId: number | null;
       userEmail: string | null;
@@ -176,7 +172,6 @@ export function createAuthStore(db: Database) {
       ).map((r) => r.entity);
     },
 
-    /** Payroll data existing with no account to protect it is a hard error at boot. */
     hasPayrollData(): boolean {
       const exists = db
         .query("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='payslips'")
@@ -198,7 +193,6 @@ export interface ApiTokenRow {
   last_used_at: number | null;
 }
 
-/** API tokens live beside accounts: same lifecycle, same audit surface. */
 export function createApiTokenStore(db: Database) {
   return {
     listApiTokens(): ApiTokenRow[] {

@@ -43,14 +43,11 @@ export function createRoutes(
 ): Hono {
   const app = new Hono();
 
-  // One-time state tokens for the GitHub App manifest hand-off (15 min TTL).
   const manifestStates = new Map<string, number>();
   const pruneStates = () => {
     const now = Date.now();
     for (const [k, exp] of manifestStates) if (exp < now) manifestStates.delete(k);
   };
-
-  // ---- dashboard ----
 
   app.get("/", (c) => {
     const rawScope = c.req.query("scope") ?? "";
@@ -100,16 +97,12 @@ export function createRoutes(
     );
   });
 
-  // ---- commits ----
-
   function parseCommitsQuery(c: Context): { filters: CommitFilters; q: CommitsQuery } {
     const repo = c.req.query("repo") ?? "";
     const author = (c.req.query("author") ?? "").trim();
     const q = (c.req.query("q") ?? "").trim();
     const from = c.req.query("from") ?? "";
     const to = c.req.query("to") ?? "";
-    // "f" marks a real form submission: an unchecked checkbox sends nothing,
-    // while the initial page load (no params) should default merges to on.
     const fromForm = c.req.query("f") !== undefined;
     const merges = fromForm ? c.req.query("merges") === "1" : true;
     const pageNum = Math.max(1, Number.parseInt(c.req.query("page") ?? "1", 10) || 1);
@@ -152,8 +145,6 @@ export function createRoutes(
     const commits = store.listCommits(filters, PER_PAGE, (q.page - 1) * PER_PAGE);
     return partial(c, <CommitRows commits={commits} filters={q} perPage={PER_PAGE} />);
   });
-
-  // ---- repositories ----
 
   app.get("/repos", (c) => {
     return page(
@@ -200,8 +191,6 @@ export function createRoutes(
     return c.body(null, 200);
   });
 
-  // ---- organizations ----
-
   app.get("/orgs", (c) => {
     return page(
       c,
@@ -213,7 +202,6 @@ export function createRoutes(
 
   app.post("/orgs", async (c) => {
     const form = await c.req.parseBody();
-    // Be liberal in what we accept: a login, "@login", or a pasted GitHub URL.
     const login = String(form.login ?? "")
       .trim()
       .replace(/^https?:\/\/[^/]+\//i, "")
@@ -258,8 +246,6 @@ export function createRoutes(
     store.deleteOrg(Number(c.req.param("id")));
     return c.body(null, 200);
   });
-
-  // ---- settings / github app ----
 
   app.get("/settings", (c) => {
     const d: SettingsData = {
@@ -332,8 +318,6 @@ export function createRoutes(
     c.header("HX-Redirect", "/settings");
     return c.text("ok");
   });
-
-  // ---- feature modules ----
 
   app.route("/", createPeopleRoutes(store, createEmployeeService(store), createIdentityService(store), auth));
   app.route("/", createDeliveryRoutes(store, createDeliveryService(store), sync, auth));

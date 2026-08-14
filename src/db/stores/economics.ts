@@ -34,8 +34,6 @@ export interface CapacityCell {
 
 export function createEconomicsStore(db: Database) {
   return {
-    // ---- invoices ----
-
     listInvoices(opts: { status?: string; clientId?: number } = {}): InvoiceRow[] {
       const where: string[] = [];
       const params: (string | number)[] = [];
@@ -156,7 +154,6 @@ export function createEconomicsStore(db: Database) {
       db.query("DELETE FROM invoices WHERE id = ?").run(id);
     },
 
-    /** Outstanding receivables bucketed by how overdue they are. */
     arAging(today: string): AgingBucket[] {
       return db
         .query(
@@ -175,7 +172,6 @@ export function createEconomicsStore(db: Database) {
         .all(today, today, today) as AgingBucket[];
     },
 
-    /** Invoiced and collected totals per project, for the P&L panel. */
     projectRevenue(projectId: number): { invoiced_minor: number; collected_minor: number } {
       return db
         .query(
@@ -186,9 +182,6 @@ export function createEconomicsStore(db: Database) {
         .get(projectId) as { invoiced_minor: number; collected_minor: number };
     },
 
-    // ---- capacity ----
-
-    /** Eight weeks of allocation per person, from a Monday. */
     capacityGrid(monday: string): CapacityCell[] {
       return db
         .query(
@@ -208,7 +201,6 @@ export function createEconomicsStore(db: Database) {
         .all(monday, monday) as CapacityCell[];
     },
 
-    /** The agency KPI: what share of the team's time is unbooked today. */
     benchPct(today: string): number {
       const row = db
         .query(
@@ -226,7 +218,6 @@ export function createEconomicsStore(db: Database) {
       return row.bench_pct ?? 0;
     },
 
-    /** People with no current allocation at all — who to sell next. */
     benchList(today: string): { id: number; full_name: string; pct: number }[] {
       return db
         .query(

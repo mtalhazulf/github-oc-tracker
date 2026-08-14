@@ -84,8 +84,6 @@ export function createDeliveryRoutes(
 
   const since = (days: number) => Math.floor(Date.now() / 1000) - days * 86_400;
 
-  // ================= clients =================
-
   function clientFilters(c: Context) {
     return {
       q: (c.req.query("q") ?? "").trim(),
@@ -210,8 +208,6 @@ export function createDeliveryRoutes(
       return c.text(friendlyError(err), 409);
     }
   });
-
-  // ================= projects =================
 
   function projectFilters(c: Context) {
     return {
@@ -389,8 +385,6 @@ export function createDeliveryRoutes(
     }
   });
 
-  // ---- repositories on a project ----
-
   function repoPanel(c: Context, projectId: number, error?: string) {
     const project = store.getProject(projectId);
     if (!project) return c.notFound();
@@ -417,7 +411,6 @@ export function createDeliveryRoutes(
       if (Number.isFinite(repoId) && repoId > 0) {
         delivery.linkRepo(id, repoId, false);
       } else if (fullName) {
-        // Not tracked yet: add it to GitHub sync first, then link.
         await delivery.linkRepoByName(id, fullName, (name) => sync.addRepo(name));
       } else {
         error = "Choose a tracked repository, or type owner/repository to add a new one.";
@@ -444,8 +437,6 @@ export function createDeliveryRoutes(
     delivery.unlinkRepo(id, Number(c.req.param("repoId")));
     return repoPanel(c, id);
   });
-
-  // ---- team ----
 
   function teamPanel(c: Context, projectId: number, error?: string) {
     const project = store.getProject(projectId);

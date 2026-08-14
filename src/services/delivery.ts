@@ -42,8 +42,6 @@ export function parseProject(body: Record<string, unknown>, fallbackCurrency: st
   const startOn = v.date("start_on", { label: "Start date", required: false });
   const endOn = v.date("end_on", { label: "End date", required: false });
 
-  // These mirror the database CHECKs, so the user gets a sentence instead of a
-  // constraint violation.
   v.check(
     kind !== "client" || (clientId !== null && clientId > 0),
     "client_id",
@@ -83,8 +81,6 @@ export function createDeliveryService(store: Store) {
   const currency = () => store.getSettings().base_currency;
 
   return {
-    // ---- clients ----
-
     createClient(body: Record<string, unknown>): ClientRow {
       const input = parseClient(body, currency());
       const existing = store.getClientByCode(input.code);
@@ -130,8 +126,6 @@ export function createDeliveryService(store: Store) {
       store.deleteClient(id);
     },
 
-    // ---- projects ----
-
     createProject(body: Record<string, unknown>): ProjectRow {
       const input = parseProject(body, currency());
       const existing = store.getProjectByCode(input.code);
@@ -170,17 +164,9 @@ export function createDeliveryService(store: Store) {
 
     removeProject(id: number): void {
       if (!store.getProject(id)) throw new NotFoundError("That project");
-      // Repo links and assignments cascade; commits belong to repositories and survive.
       store.deleteProject(id);
     },
 
-    // ---- repositories on a project ----
-
-    /**
-     * Link a repo. Sharing across projects is allowed and does not warn — an
-     * agency's shared library genuinely serves two engagements. Only the single
-     * PRIMARY link is exclusive, because that is what makes rollups count once.
-     */
     linkRepo(projectId: number, repoId: number, makePrimary: boolean): void {
       const project = store.getProject(projectId);
       if (!project) throw new NotFoundError("That project");
@@ -203,7 +189,6 @@ export function createDeliveryService(store: Store) {
       }
     },
 
-    /** Add a repo by "owner/name", tracking it first if it is new. */
     async linkRepoByName(
       projectId: number,
       fullName: string,
@@ -223,8 +208,6 @@ export function createDeliveryService(store: Store) {
       if (!linked) throw new NotFoundError("That repository link");
       store.setPrimaryRepo(projectId, repoId);
     },
-
-    // ---- team ----
 
     addAssignment(projectId: number, body: Record<string, unknown>): void {
       const project = store.getProject(projectId);

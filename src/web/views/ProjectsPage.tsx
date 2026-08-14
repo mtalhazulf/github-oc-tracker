@@ -339,9 +339,6 @@ export function RepoPanel({
                 ) : (
                   <span class="text-ink">{r.full_name}</span>
                 )}
-                {/* The primary flag only means something once a repo is shared,
-                    so the badge stays off until it does — otherwise every row
-                    carries a word the reader has no use for. */}
                 {r.shared_with > 0 ? (
                   <>
                     <Badge

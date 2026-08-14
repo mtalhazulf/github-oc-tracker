@@ -57,7 +57,6 @@ export function buildApp(store: Store, sync: SyncService, appSvc: GitHubAppServi
     }),
   );
 
-  // Liveness/readiness probe — intentionally unauthenticated for orchestrators.
   app.get("/healthz", (c) => {
     let dbOk = true;
     try {
@@ -77,10 +76,8 @@ export function buildApp(store: Store, sync: SyncService, appSvc: GitHubAppServi
     );
   });
 
-  // Webhooks authenticate with HMAC signatures, not sessions — mount first.
   app.route("/", createWebhookRoutes(store, sync, appSvc));
 
-  // Basic auth stays as an optional outer network gate, unchanged.
   if (config.basicAuthUser && config.basicAuthPass) {
     app.use(
       "*",
@@ -94,9 +91,6 @@ export function buildApp(store: Store, sync: SyncService, appSvc: GitHubAppServi
   app.use("/htmx.min.js", serveStatic({ path: "./public/htmx.min.js" }));
 
   const auth = createAuthService(store);
-  // Identity first (cookie, then bearer token), then CSRF, then the single
-  // authorisation gate. Order matters: rbac must see the principal whichever
-  // way it was established, and must run before any handler.
   app.use("*", sessionMiddleware(auth));
   app.use("/api/*", apiAuth(store));
   app.use("*", csrfMiddleware());

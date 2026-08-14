@@ -4,11 +4,6 @@ interface Props {
   cells: { weekday: number; hour: number; n: number }[];
 }
 
-/**
- * Day-of-week × hour-of-day heatmap ("when do commits happen").
- * Sequential single-hue ramp: near-zero recedes toward the surface,
- * the maximum is the strongest step. Native tooltips on every cell.
- */
 export function Punchcard({ cells }: Props) {
   const byKey = new Map<string, number>();
   let max = 0;

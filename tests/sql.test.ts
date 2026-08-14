@@ -86,7 +86,6 @@ describe("store.tx", () => {
   test("refuses an async callback at runtime (it would silently lose atomicity)", () => {
     const db = createDb(":memory:");
     const helpers = createSqlHelpers(db);
-    // Cast around the compile-time guard to prove the runtime backstop works.
     const asyncBody = (async () => 1) as unknown as () => number;
     expect(() => helpers.tx(asyncBody)).toThrow(/must be synchronous/);
   });
@@ -103,7 +102,6 @@ describe("store composition", () => {
         seen.add(key);
       }
     }
-    // Every helper key survives onto the composed store.
     const store = createStore(db);
     for (const key of seen) expect(key in store).toBe(true);
   });
